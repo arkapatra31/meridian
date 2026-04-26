@@ -1,0 +1,58 @@
+import logging
+import os
+
+from dotenv import load_dotenv
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from .routes import health, repos
+
+load_dotenv()
+
+logger = logging.getLogger("meridian.api")
+logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
+
+
+def create_app() -> FastAPI:
+    """FastAPI application factory."""
+    app = FastAPI(
+        title="Meridian API",
+        version="0.1.0",
+        description="Agent-powered code knowledge graph builder.",
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
+    )
+
+    cors_origins = os.environ.get("MERIDIAN_CORS_ORIGINS", "*").split(",")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[o.strip() for o in cors_origins if o.strip()],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    app.include_router(health.router)
+    app.include_router(repos.router)
+
+    return app
+
+
+app = create_app()
+
+
+def run() -> None:
+    """Console entry point — `uv run python -m api.main`."""
+    import uvicorn
+
+    uvicorn.run(
+        "api.main:app",
+        host=os.environ.get("MERIDIAN_HOST", "127.0.0.1"),
+        port=int(os.environ.get("MERIDIAN_PORT", "8000")),
+        reload=os.environ.get("MERIDIAN_RELOAD", "0") == "1",
+    )
+
+
+if __name__ == "__main__":
+    run()
