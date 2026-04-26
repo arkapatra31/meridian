@@ -14,15 +14,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ingestion_layer.github_mcp.helpers import parse_owner_repo, repo_id
+from ingestion_layer.utils.db_utils import has_active_graph
+from ingestion_layer.utils.utils import cache_root
 
 logger = logging.getLogger("meridian.repo_cache")
-
-# Configurable via the CACHE_ROOT env var; falls back to repo_cache/codebase/.
-_DEFAULT_CACHE_ROOT = Path(__file__).resolve().parent / "codebase"
-
-
-def _cache_root() -> Path:
-    return Path(os.environ.get("CACHE_ROOT") or _DEFAULT_CACHE_ROOT).expanduser()
 
 
 @dataclass(frozen=True)
@@ -48,12 +43,16 @@ async def clone_repo(
     owner, repo = parse_owner_repo(repo_url)
     rid = repo_id(repo_url)
 
-    cache_root = _cache_root()
-    cache_root.mkdir(parents=True, exist_ok=True)
-    dest = cache_root / repo
+    root = cache_root()
+    root.mkdir(parents=True, exist_ok=True)
+    dest = root / repo
 
-    if dest.exists():
-        logger.info("repo_cache: clone already exists at %s — skipping", dest)
+    if await asyncio.to_thread(has_active_graph, repo_url, branch or "main"):
+        logger.info(
+            "repo_cache: active graph already exists for %s@%s — skipping clone",
+            repo_url,
+            branch or "main",
+        )
         return CloneResult(rid, owner, repo, branch, dest, reused=True)
 
     # Authenticated HTTPS URL form GitHub accepts for PAT auth.

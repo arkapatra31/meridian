@@ -1,9 +1,12 @@
 import logging
 import os
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from db.database import dispose, init_db
 
 from .routes import health, repos
 
@@ -11,6 +14,16 @@ load_dotenv()
 
 logger = logging.getLogger("meridian.api")
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    engine = init_db()
+    app.state.db_engine = engine
+    try:
+        yield
+    finally:
+        dispose()
 
 
 def create_app() -> FastAPI:
@@ -22,6 +35,7 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url="/openapi.json",
+        lifespan=lifespan,
     )
 
     cors_origins = os.environ.get("MERIDIAN_CORS_ORIGINS", "*").split(",")
