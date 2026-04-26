@@ -1,0 +1,5 @@
+# Code owners for Meridian
+# Syntax: https://docs.github.com/articles/about-code-owners
+# Listed owners are auto-requested for review on PRs touching matching paths.
+
+* @arkapatra31
