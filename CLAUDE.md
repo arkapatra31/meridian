@@ -1,4 +1,6 @@
-# What is Meridian?
+# CLAUDE.md — Meridian
+
+## What is Meridian?
 
 Meridian is a remote-first, agent-powered code knowledge graph builder. A user points it at any GitHub repository URL and gets back an interactive, queryable knowledge graph — no local installation required on the user's end.
 
@@ -14,34 +16,56 @@ Meridian is proprietary software. All rights reserved. No part of this codebase 
 
 ## Architecture Overview
 
-Meridian has four layers with 12 components total.
+Meridian has four layers with 12 components total, backed by a SQLite database for durable graph and user persistence.
 
 ### Layer 1: Ingestion
 
 | Component | Technology | Role |
 |-----------|-----------|------|
 | API Gateway (C1) | FastAPI | REST endpoints, WebSocket for build progress, serves React SPA |
-| GitHub MCP Server (C2) | GitHub MCP | All GitHub interaction — clone, pull, diff, metadata, PRs, issues |
-| Repo Cache (C3) | Server filesystem | Stores git clones at `/var/meridian/repos/{repo_hash}/` |
+| Git Client (C2a) | git CLI (subprocess) | Initial clone + pull via git protocol — zero API rate limit impact |
+| GitHub MCP Server (C2b) | GitHub MCP | Metadata and enrichment only — diffs, PRs, issues, contributors |
+| Repo Cache (C3) | Server filesystem | Ephemeral git clones at `/var/meridian/cache/{repo_hash}/` |
+
+**CRITICAL — Hybrid ingestion model (rate limit protection):**
+
+The GitHub MCP server translates every tool call into an individual GitHub REST API request. GitHub enforces a rate limit of 5,000 requests/hour per PAT-authenticated user (shared across ALL tools using that PAT). Using the MCP's `get_file_contents` for bulk file fetching on a 500-file repo would consume 500+ API calls for a single build — making multi-repo or multi-user scenarios unusable.
+
+**Solution: split bulk data from metadata.**
+
+- **Initial build:** Use `git clone` directly via subprocess. This uses git's smart transfer protocol, NOT the REST API. One operation, all files on disk, zero API calls consumed. Tree-sitter and agent tools then read from the local filesystem. The clone is ephemeral — it can be evicted once the graph is built and persisted to the DB.
+- **Incremental updates:** Use `git pull` (subprocess, not MCP) to fetch changes, then GitHub MCP only for the diff metadata (`compare_commits`) — typically 1-2 API calls.
+- **Enrichment:** Use GitHub MCP for PR descriptions, issue context, contributor data, and code search. These are low-volume, high-value calls (5-20 per sync) that stay well within rate limits.
+
+```
+Initial build:  git clone (subprocess) → 0 API calls → rate limit safe
+Incremental:    git pull (subprocess) + MCP diff → 2-5 API calls
+Enrichment:     MCP PRs/issues/contributors → 5-20 API calls
+────────────────────────────────────────────────────────────
+Total per sync: ~10-25 API calls (vs 500-2000+ with MCP-only)
+```
 
 **API endpoints:**
+- `POST /auth/register` — create a new user account
+- `POST /auth/login` — authenticate, returns JWT token
 - `POST /repos` — submit a repo for graph building (accepts `url`, optional `pat`, optional `branch`)
-- `GET /repos/{id}/graph` — fetch the graph JSON
-- `POST /repos/{id}/query` — send a QnA question
-- `POST /repos/{id}/sync` — trigger incremental update
-- `WS /repos/{id}/status` — stream build progress to frontend
+- `GET /repos` — list all graphs owned by the authenticated user
+- `GET /repos/{graph_id}/graph` — fetch the graph JSON
+- `POST /repos/{graph_id}/query` — send a QnA question
+- `POST /repos/{graph_id}/sync` — trigger incremental update
+- `DELETE /repos/{graph_id}` — permanently delete a graph (explicit only, no auto-delete)
+- `WS /repos/{graph_id}/status` — stream build progress to frontend
 
-**Repo cache structure:**
+All `/repos` endpoints require a valid JWT token. Users can only access their own graphs.
+
+**Repo cache structure (ephemeral):**
 ```
-/var/meridian/repos/{repo_hash}/
+/var/meridian/cache/{repo_hash}/
 ├── .git/
 ├── src/
-├── ...
-└── .meridian/
-    ├── last_commit_sha
-    ├── file_hashes.json
-    └── graph.json
+└── ...
 ```
+Note: the cache is purely ephemeral. Graph data is persisted to the database, NOT to the filesystem. Clones can be evicted at any time without data loss.
 
 ### Layer 2: Processing
 
@@ -72,16 +96,17 @@ Meridian has four layers with 12 components total.
 **Key design principle:** The agent's grep/glob/read tool pattern is an active ADVANTAGE over alternatives like LSP. It loads only what's needed (surgical), handles dynamic patterns LSP cannot (flexible), and costs scale with ambiguity not project size (efficient).
 
 **Diff Engine — incremental update flow:**
-1. `git pull` via GitHub MCP
-2. `git diff last_commit_sha..HEAD --name-status`
-3. Categorize: added, modified, deleted, renamed
-4. Added files: tree-sitter parse + agent resolve + add nodes/edges
-5. Modified files: tree-sitter re-parse + diff old vs new edges + patch
-6. Deleted files: remove all nodes/edges from that file
-7. Renamed files: update file references, preserve edges
-8. Re-evaluate neighbor edges (anything touching a changed node)
-9. Re-cluster only affected Leiden communities
-10. Update `last_commit_sha`
+1. `git pull` via subprocess (git protocol — NOT MCP, no API rate limit impact)
+2. `git diff last_commit_sha..HEAD --name-status` (local git operation)
+3. Optionally call GitHub MCP `compare_commits` for PR/issue context on changed files (1-2 API calls)
+4. Categorize: added, modified, deleted, renamed
+5. Added files: tree-sitter parse + agent resolve + add nodes/edges
+6. Modified files: tree-sitter re-parse + diff old vs new edges + patch
+7. Deleted files: remove all nodes/edges from that file
+8. Renamed files: update file references, preserve edges
+9. Re-evaluate neighbor edges (anything touching a changed node)
+10. Re-cluster only affected Leiden communities
+11. Update `last_commit_sha` in the DB
 
 ### Layer 3: Graph
 
@@ -89,9 +114,9 @@ Meridian has four layers with 12 components total.
 |-----------|-----------|------|
 | Graph Builder (C8) | NetworkX | Merges EXTRACTED + INFERRED edges into unified graph |
 | Leiden Clustering (C9) | graspologic | Community detection on graph topology, no embeddings |
-| Graph Store (C10) | JSON file | Persists the knowledge graph per repo |
+| Graph Store (C10) | SQLite (meridian.db) | Durable persistence for graphs and users |
 
-**Node schema:**
+**Node schema (within graph_data JSON):**
 ```json
 {
   "id": "src/auth/tokens.py::validate_token",
@@ -108,7 +133,7 @@ Meridian has four layers with 12 components total.
 ```
 Node types: `module`, `class`, `function`, `method`
 
-**Edge schema:**
+**Edge schema (within graph_data JSON):**
 ```json
 {
   "source": "src/routes/api.py::login",
@@ -121,31 +146,6 @@ Node types: `module`, `class`, `function`, `method`
 ```
 Edge types: `IMPORTS`, `CALLS`, `CONTAINS`, `INHERITS`, `DECORATES`, `RELATES_TO`, `DEPENDS_ON`
 Confidence levels: `EXTRACTED` (tree-sitter, high trust), `INFERRED` (agent, medium trust)
-
-**Graph store (graph.json) top-level schema:**
-```json
-{
-  "metadata": {
-    "repo_url": "...",
-    "branch": "main",
-    "last_commit_sha": "a1b2c3d4",
-    "built_at": "2026-04-26T10:30:00Z",
-    "node_count": 847,
-    "edge_count": 2341,
-    "community_count": 12,
-    "languages": ["python", "typescript", "go"]
-  },
-  "nodes": [],
-  "edges": [],
-  "communities": {
-    "0": { "label": "Auth cluster", "node_count": 34 }
-  },
-  "god_nodes": ["src/db/connection.py::get_db"],
-  "surprises": [
-    { "edge": "...", "reason": "Unexpected auth→payment link" }
-  ]
-}
-```
 
 **Leiden clustering configuration:**
 - Implementation: graspologic (Microsoft)
@@ -163,7 +163,7 @@ Confidence levels: `EXTRACTED` (tree-sitter, high trust), `INFERRED` (agent, med
 
 **QnA flow:**
 1. User asks a question
-2. Load graph.json
+2. Load graph_data from DB by graph_id
 3. BFS from nodes matching the query keywords — extract 2-hop neighborhood subgraph
 4. Serialize subgraph as context (~2k tokens, NOT the full repo)
 5. Send to ClaudeSDKClient with system prompt enforcing graph-grounded answers
@@ -188,28 +188,134 @@ Confidence levels: `EXTRACTED` (tree-sitter, high trust), `INFERRED` (agent, med
 - zustand (state management)
 - tailwindcss (styling)
 
+## Database Schema
+
+Meridian uses SQLite (`meridian.db`) for durable persistence. Two tables: `users` and `graphs`.
+
+**Users table:**
+```sql
+CREATE TABLE users (
+    user_id       TEXT PRIMARY KEY,   -- UUID
+    email         TEXT UNIQUE NOT NULL,
+    display_name  TEXT NOT NULL,
+    github_username TEXT,
+    hashed_password TEXT NOT NULL,     -- bcrypt or argon2, NEVER plaintext
+    role          TEXT DEFAULT 'member', -- 'admin' | 'member'
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login_at TIMESTAMP
+);
+```
+
+**Graphs table:**
+```sql
+CREATE TABLE graphs (
+    graph_id        TEXT PRIMARY KEY,   -- UUID
+    user_id         TEXT NOT NULL,      -- FK → users.user_id
+    repo_url        TEXT NOT NULL,
+    branch          TEXT DEFAULT 'main',
+    last_commit_sha TEXT,
+    graph_data      TEXT,               -- JSON blob (nodes, edges, communities, god_nodes, surprises)
+    status          TEXT DEFAULT 'building', -- 'building' | 'ready' | 'error'
+    node_count      INTEGER DEFAULT 0,
+    edge_count      INTEGER DEFAULT 0,
+    community_count INTEGER DEFAULT 0,
+    error_message   TEXT,               -- populated when status = 'error'
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+```
+
+**Key rules:**
+- `graph_id` is returned to the user on `POST /repos`. All subsequent operations use this ID.
+- Graphs persist until an explicit `DELETE /repos/{graph_id}` is called. No TTL, no auto-eviction.
+- Users can only access graphs where `user_id` matches their authenticated identity.
+- `node_count`, `edge_count`, `community_count` are denormalized from `graph_data` for dashboard display without deserializing the full JSON blob.
+- `status` tracks the build lifecycle: `building` → `ready` (or `building` → `error`).
+
+**Relationship:** One user owns many graphs. Each graph belongs to exactly one user.
+
+## Storage Model
+
+Meridian separates ephemeral storage (cheap, evictable) from durable storage (persists until explicit delete).
+
+**Ephemeral — Repo cache:**
+- Location: `/var/meridian/cache/{repo_hash}/`
+- Contains: git clones (`.git/` + source files)
+- Lifecycle: auto-evicted by TTL (7 days idle) or LRU (disk budget exceeded)
+- Size: ~100MB-2GB per clone
+- Loss impact: zero — re-clone on next sync, graph already safe in DB
+
+**Durable — SQLite database:**
+- Location: `/var/meridian/db/meridian.db`
+- Contains: users table + graphs table (with graph_data JSON)
+- Lifecycle: persists until explicit DELETE call, survives cache eviction / container restarts
+- Size: ~1-5MB per graph record
+- Loss impact: catastrophic — this IS the product. Back up this file.
+
+**Re-clone scenario:** When a user syncs a graph whose cache has been evicted, Meridian reads `last_commit_sha` from the DB, re-clones the repo to cache, runs `git diff` from that SHA, does an incremental patch, writes the updated graph back to DB, and optionally evicts the cache again.
+
 ## Deployment
 
-Single Docker image. No database, no Redis, no message queue.
+Single Docker image with SQLite for persistence.
 
 **Container contents:**
 - FastAPI server (API gateway + static React SPA serving)
+- git CLI (for clone/pull via git protocol — no API rate limit impact)
 - py-tree-sitter + 25 language grammar .so files
 - Agent SDK runtime
 - ClaudeSDKClient runtime
 - NetworkX + graspologic
+- SQLite (embedded, no separate server process)
 
-**Volume mount:** `/var/meridian/repos` — stores git clones and graph.json files
+**Volume mount:** `/var/meridian/` — contains both `db/meridian.db` and `cache/` directory
+
+```yaml
+# docker-compose.yml
+volumes:
+  - ./meridian-data:/var/meridian
+```
+
+```
+./meridian-data/              ← on host machine
+├── db/
+│   └── meridian.db           ← durable: users + graphs (back this up)
+└── cache/                    ← ephemeral: git clones (evictable)
+    ├── a1b2c3d4/
+    └── e5f6g7h8/
+```
 
 **External dependencies (network):**
-- GitHub API (via MCP server) — for repo cloning, diffs, metadata
+- GitHub (git protocol) — for initial clone and pull operations (NOT rate limited)
+- GitHub REST API (via MCP server) — for metadata enrichment only: diffs, PRs, issues, contributors (rate limited: 5,000/hr per PAT)
 - Anthropic API — for Agent SDK (orchestration + Pass 2) and ClaudeSDKClient (QnA)
 
 **Repo cache lifecycle:**
-- Created on first `POST /repos`
-- Updated via `git pull` on `POST /repos/{id}/sync`
+- Created on first `POST /repos` (git clone into cache)
+- Updated via `git pull` on `POST /repos/{graph_id}/sync`
 - Evicted after configurable TTL (default: 7 days idle)
 - Disk budget per instance (default: 50GB), LRU eviction when full
+- Eviction deletes ONLY the cache directory — the graph in the DB is untouched
+
+## Authentication
+
+Meridian uses JWT-based authentication.
+
+**Flow:**
+1. `POST /auth/register` — create account with email, display_name, password
+2. `POST /auth/login` — returns a JWT token (short-lived, e.g. 24h expiry)
+3. All `/repos` endpoints require `Authorization: Bearer <token>` header
+4. Token contains `user_id` — used to scope all DB queries to that user's graphs
+
+**Password handling:**
+- Hash with bcrypt or argon2 before storing in `users.hashed_password`
+- NEVER store plaintext passwords
+- NEVER log passwords or tokens
+
+**Authorization rules:**
+- Users can only list, view, query, sync, and delete their own graphs
+- `DELETE /repos/{graph_id}` verifies `graph.user_id == authenticated_user.user_id`
+- Admin role can access all graphs (future use)
 
 ## Key Design Decisions
 
@@ -217,116 +323,84 @@ Single Docker image. No database, no Redis, no message queue.
 
 2. **Tree-sitter over Python ast** — Tree-sitter supports 25 languages vs Python ast's Python-only limitation. This makes Meridian a general-purpose tool, not a Python-only niche.
 
-3. **GitHub MCP as sole data access** — All GitHub interaction flows through the MCP server. No component talks to GitHub directly. This centralizes auth, rate limiting, and caching.
+3. **Hybrid ingestion: git clone + GitHub MCP** — Initial bulk fetch uses `git clone` via subprocess (git protocol, zero API calls). GitHub MCP is used ONLY for metadata enrichment (PRs, issues, contributors, diff context) — NOT for file content fetching. This avoids GitHub's 5,000 requests/hour rate limit, which the MCP's per-file `get_file_contents` would exhaust on a single medium-sized repo.
 
 4. **Agent SDK for orchestration, ClaudeSDKClient for QnA** — Different tools for different jobs. Orchestration needs tool use; QnA needs single-shot completion with graph context.
 
-5. **JSON file storage over database** — graph.json is simple, portable, and sufficient for per-repo knowledge graphs. No database dependency to manage.
+5. **SQLite for durable persistence, filesystem for ephemeral cache** — Graphs and users live in SQLite (`meridian.db`), keyed by UUID, persisting until explicit delete. Git clones live in the cache directory and are auto-evicted. This separates the valuable (graphs) from the disposable (clones).
 
 6. **Differential updates from day one** — Not an afterthought. The diff engine is a core component, not a bolted-on optimization.
 
 7. **Two confidence tiers** — Every edge is tagged EXTRACTED (tree-sitter, deterministic) or INFERRED (agent, probabilistic). This transparency is surfaced in both the QnA answers and the frontend visualization.
 
+8. **Never use GitHub MCP for bulk file fetching** — Each MCP `get_file_contents` call = 1 REST API request. A 500-file repo = 500 API calls. With a 5,000/hour shared rate limit, this is catastrophic for multi-repo or multi-user scenarios. git clone via subprocess is the only correct approach for initial builds.
+
+9. **Every graph is owned by a user** — The `graphs.user_id` FK ensures every graph is scoped to the user who triggered the build. No anonymous builds, no shared graphs (unless explicitly added later).
+
 ## Cost Model
 
 | Component | Cost |
 |-----------|------|
+| git clone / git pull | Free — git protocol, no API rate limit |
 | Tree-sitter (Pass 1) | Free — local, deterministic |
 | Diff engine (C7) | Free — local git operations |
 | Graph builder + Leiden | Free — local CPU |
+| SQLite (persistence) | Free — embedded, no server process |
+| GitHub MCP (metadata) | API rate limit — 5-20 calls per sync (well within 5,000/hr budget) |
 | Agent SDK (Pass 2) | Token cost — per ambiguous edge resolution |
 | Agent SDK (orchestration) | Token cost — pipeline coordination |
 | ClaudeSDKClient (QnA) | Token cost — per user query |
 | Server compute | Infrastructure cost — Docker container |
-| Disk storage | Infrastructure cost — repo clones + graph files |
+| Disk storage | Infrastructure cost — DB file + cache directory |
 
 **Optimization principle:** Tree-sitter handles ~80% of edges for free. Agent tokens only burn on the ~20% that genuinely need reasoning. On incremental updates, only changed-file edges incur agent cost.
 
 ## Security Considerations
 
-- GitHub PATs must be handled carefully — minimum required scopes, never logged, never stored beyond the session
-- Private repo code is cloned to server disk — ensure proper isolation between users
-- Repo clones must be cleaned up on TTL expiry
+- Passwords are hashed with bcrypt or argon2 — NEVER stored as plaintext
+- JWT tokens are short-lived (24h) and must be validated on every request
+- GitHub PATs must be handled carefully — minimum required scopes (`repo` for private, none for public), never logged, never stored beyond the session
+- PATs are used for both git clone authentication AND GitHub MCP API calls — same token, different protocols
+- Users can only access their own graphs — every DB query is scoped by `user_id` from the JWT
+- Private repo code is cloned to server disk — ensure proper isolation between users via separate cache directories
+- Repo clones are ephemeral and auto-evicted — minimize exposure window for sensitive code
+- `meridian.db` contains user credentials (hashed) and all graph data — protect this file, back it up, restrict filesystem access
 - No telemetry, no usage tracking, no analytics
-- The only outbound network calls are to GitHub API (via MCP) and Anthropic API (Agent SDK + ClaudeSDKClient)
-
-## File Structure (Target)
-
-```
-meridian/
-├── CLAUDE.md                  # This file
-├── LICENSE                    # Proprietary — All Rights Reserved
-├── README.md
-├── Dockerfile
-├── docker-compose.yml
-├── pyproject.toml
-├── src/
-│   ├── api/                   # C1: FastAPI gateway
-│   │   ├── main.py
-│   │   ├── routes.py
-│   │   └── websocket.py
-│   ├── ingestion/             # C2, C3: GitHub MCP + repo cache
-│   │   ├── github_mcp.py
-│   │   └── repo_cache.py
-│   ├── processing/            # C4, C5, C6, C7: Agent + tree-sitter + diff
-│   │   ├── orchestrator.py    # C4: Agent SDK orchestration
-│   │   ├── treesitter.py      # C5: tree-sitter extraction
-│   │   ├── agent_pass.py      # C6: agent reasoning with tools
-│   │   └── diff_engine.py     # C7: incremental update logic
-│   ├── graph/                 # C8, C9, C10: NetworkX + Leiden + store
-│   │   ├── builder.py         # C8: graph construction
-│   │   ├── clustering.py      # C9: Leiden community detection
-│   │   └── store.py           # C10: JSON persistence
-│   ├── qna/                   # C11: QnA agent
-│   │   ├── agent.py
-│   │   └── subgraph.py        # BFS subgraph extraction
-│   └── shared/
-│       ├── schemas.py         # Node, Edge, Graph dataclasses
-│       └── config.py          # Environment config
-├── frontend/                  # C12: React app
-│   ├── package.json
-│   ├── src/
-│   │   ├── App.tsx
-│   │   ├── components/
-│   │   │   ├── GraphView.tsx
-│   │   │   ├── QnAPanel.tsx
-│   │   │   ├── NodeSidebar.tsx
-│   │   │   └── SearchBar.tsx
-│   │   └── stores/
-│   │       └── graphStore.ts  # zustand store
-│   └── tailwind.config.js
-├── grammars/                  # Tree-sitter .so files
-│   ├── python.so
-│   ├── javascript.so
-│   ├── typescript.so
-│   └── ...
-└── tests/
-    ├── test_treesitter.py
-    ├── test_agent_pass.py
-    ├── test_diff_engine.py
-    ├── test_graph_builder.py
-    └── test_qna.py
-```
+- Outbound network calls are limited to: GitHub (git protocol for clone/pull), GitHub REST API (via MCP for metadata only), and Anthropic API (Agent SDK + ClaudeSDKClient)
+- The git clone subprocess must sanitize the repo URL to prevent command injection (never pass unsanitized user input to shell commands)
 
 ## Commands Reference
 
 When building Meridian, use these as the target CLI / API commands:
 
 ```bash
-# API usage (via curl or frontend)
+# Authentication
+POST /auth/register            # Create user account
+POST /auth/login               # Get JWT token
+
+# Graph operations (all require JWT)
 POST /repos                    # Submit repo for graph building
-GET  /repos/{id}/graph         # Get the knowledge graph
-POST /repos/{id}/query         # Ask a question
-POST /repos/{id}/sync          # Trigger incremental update
-WS   /repos/{id}/status        # Stream build progress
+GET  /repos                    # List user's graphs
+GET  /repos/{graph_id}/graph   # Get the knowledge graph
+POST /repos/{graph_id}/query   # Ask a question
+POST /repos/{graph_id}/sync    # Trigger incremental update
+DELETE /repos/{graph_id}       # Permanently delete a graph
+WS   /repos/{graph_id}/status  # Stream build progress
 ```
 
 ## What NOT to Do
 
+- Do NOT use GitHub MCP's `get_file_contents` for bulk file fetching — this burns 1 API call per file and will exhaust the 5,000/hr rate limit on any non-trivial repo. Use `git clone` via subprocess instead.
+- Do NOT use GitHub MCP for `git pull` — use subprocess directly. The git protocol is not rate limited; the REST API is.
 - Do NOT use LSP or language servers — we explicitly decided against this
 - Do NOT use Python's built-in `ast` module — tree-sitter replaces it for multi-language support
 - Do NOT use the Anthropic API directly — use Claude Code Agent SDK for orchestration and ClaudeSDKClient for QnA
-- Do NOT add a database (PostgreSQL, Redis, etc.) — JSON file persistence is the design choice
+- Do NOT store graph.json on the filesystem — all graph data goes into the SQLite DB, keyed by graph_id
+- Do NOT auto-delete graphs — graphs persist until the user explicitly calls DELETE
+- Do NOT allow users to access other users' graphs — every query must be scoped by user_id from JWT
+- Do NOT store plaintext passwords — always hash with bcrypt or argon2
 - Do NOT send full repo contents to the LLM — always use surgical grep/glob/read tool calls
 - Do NOT rebuild the full graph on sync — always use the diff engine for incremental updates
 - Do NOT make the frontend a separate deployment — it ships as a static build served by FastAPI
+- Do NOT pass unsanitized user-provided repo URLs to subprocess shell commands — always validate and sanitize to prevent command injection
+- Do NOT treat the cache directory as durable storage — it is ephemeral and evictable. The DB is the source of truth.
