@@ -1,28 +1,31 @@
 ## Pipeline / persistence
-- Wire graph row creation: insert `Graph` (status=building) early in dispatcher; backfill `tree.graph_id` after `index_tree`
-- Wire `sync_runs`: open RUNNING row at dispatch start, close SUCCESS/ERROR with counters at end (FULL + PATCH)
-- PATCH flow: implement `_mcp_incremental_sync` — `git pull` + `git diff --name-status -M`, load tree from DB, run C5/C6 on changed files only, mutate tree (drop nodes/edges from changed files, re-add from re-parse, fix cross-file edges), update `trees` row
+- Error-path `record_sync_run` — wrap `_full_build` in try/except, write `status=ERROR` row with the stack message; today only the SUCCESS path lands an audit row
+- Open a RUNNING `sync_runs` row at dispatch start (so `WS /repos/{graph_id}/status` has something to stream); flip to SUCCESS/ERROR at end instead of single end-of-pipeline insert
+- PATCH `_patch_sync`: git pull + `git diff --name-status -M`, load tree from `trees.tree_data`, run C4a/C4b on changed files only, mutate tree (drop changed-file nodes/edges, re-add from re-parse, fix cross-file edges), C5a rebuild, C5b partial re-cluster of affected communities only
 - Repo cache eviction: TTL (7d idle) + LRU disk-budget; mark `repo_clones.evicted_at`, keep row as tombstone for re-clone
 
-## Graph layer (C8 / C9)
-- C8 graph builder: NetworkX merge of EXTRACTED + INFERRED edges from `trees.tree_data`
-- C9 Leiden clustering: graspologic, populate communities + god nodes + surprises
-- Finalize graph: write clustered output to `graphs.graph_data`, populate `node_count` / `edge_count` / `community_count`, flip `status` to `ready`, stamp `last_synced_at` and `last_commit_sha`
-
 ## API surface
+- `GET /repos` — list authenticated user's graphs (needed for frontend list view)
+- `GET /repos/{graph_id}/graph` — fetch clustered graph (blocker for frontend)
 - `GET /trees/{tree_id}` — fetch indexed parse tree
-- `GET /repos/{graph_id}/graph` — fetch clustered graph (post-C9)
-- `DELETE /repos/{graph_id}` — explicit graph delete (cascades to trees + sync_runs)
-- `WS /repos/{graph_id}/status` — stream build progress (driven by `sync_runs` updates)
-- `POST /repos/{graph_id}/query` — C11 QnA (BFS subgraph + ClaudeSDKClient)
+- `DELETE /repos/{graph_id}` — explicit delete; cascades to `trees` + `sync_runs`
+- `WS /repos/{graph_id}/status` — stream build progress from `sync_runs` row updates
+- `POST /repos/{graph_id}/query` — C6 QnA endpoint
+- Widen FastAPI exception handling — only `CloneError` / `ValueError` are mapped today; parse / Leiden / DB errors propagate as raw 500s
+
+## Frontend (C7)
+- Minimum-viable v1: react-force-graph-3d viewer, fetch graph by id, click-to-detail sidebar, served as static SPA from C1
+- Defer for v1: auth flow, WebSocket build progress, QnA panel, semantic zoom — keep it small to validate the graph is actually useful
+
+## QnA (C6)
+- BFS 2-hop subgraph from query keywords (~2k tokens), `ClaudeSDKClient` single-shot, return answer with node references
 
 ## Auth
 - `/auth/register`, `/auth/login`, JWT middleware
 - Scope all `/repos` and `/trees` queries by `user_id` from JWT
-- Flip `tree.graph_id`, `graphs.user_id`, `repo_clones.user_id` to NOT NULL once auth lands and rows are always user-scoped
-
-## Frontend
-- C12 React frontend: react-force-graph-3d viewer, semantic zoom, served as static SPA from FastAPI
+- Drop the `_SYSTEM_USER_ID` placeholder in `graph_engine/utils/db_utils.py`
+- Flip `tree.graph_id`, `graphs.user_id`, `repo_clones.user_id` to NOT NULL once every row is user-scoped
 
 ## Cleanup
-- Remove `ENV=dev` fixture short-circuit in `surgical_agent/resolver.py` once C6 is exercised end-to-end
+- Remove `ENV=dev` fixture short-circuit in `hybrid_parsing/surgical_agent/resolver.py` once C4b is exercised end-to-end on real repos
+- Frontend table in CLAUDE.md still says "WebGL force-graph (3d)"; pick 2D vs 3D when v1 lands and reconcile
