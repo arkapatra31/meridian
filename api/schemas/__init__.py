@@ -1,6 +1,7 @@
 from .health import HealthResponse
 from .index_repo import IndexRepoRequest, IndexRepoResponse
 from .parse_codebase import ParseCodebaseRequest, ParseCodebaseResponse
+from .sync import SyncRequest, SyncResponse
 
 __all__ = [
     "HealthResponse",
@@ -8,4 +9,6 @@ __all__ = [
     "IndexRepoResponse",
     "ParseCodebaseRequest",
     "ParseCodebaseResponse",
+    "SyncRequest",
+    "SyncResponse",
 ]

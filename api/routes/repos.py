@@ -5,6 +5,7 @@ from fastapi.concurrency import run_in_threadpool
 
 from hybrid_orchestration.codebase_parser import parse_codebase
 from hybrid_orchestration.surgical_agent import resolve_ambiguous
+from ingestion_layer.repo_actions import sync_repo
 from ingestion_layer.repo_cache.clone_repo import CloneError, clone_repo
 
 from ..schemas import (
@@ -12,7 +13,10 @@ from ..schemas import (
     IndexRepoResponse,
     ParseCodebaseRequest,
     ParseCodebaseResponse,
+    SyncRequest,
+    SyncResponse,
 )
+from ..schemas.sync import DiffSummaryPayload
 
 router = APIRouter(prefix="/repos", tags=["repos"])
 
@@ -49,7 +53,60 @@ async def index_repo(
         owner=result.owner,
         repo=result.repo,
         branch=result.branch,
-        reused=result.reused,
+    )
+
+
+@router.post(
+    "/sync",
+    response_model=SyncResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Dispatch FULL clone or PATCH update based on DB state",
+)
+async def sync(
+    body: SyncRequest,
+    x_github_pat: str = Header(
+        ...,
+        alias="X-GitHub-PAT",
+        description="GitHub Personal Access Token (passed per-request, never stored)",
+    ),
+) -> SyncResponse:
+    url = str(body.url)
+
+    try:
+        result = await sync_repo(
+            repo_url=url,
+            pat=x_github_pat,
+            branch=body.branch,
+        )
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except CloneError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    clone = result.clone
+    diff_payload: DiffSummaryPayload | None = None
+    if result.diff is not None:
+        s = result.diff.summary
+        diff_payload = DiffSummaryPayload(
+            mode=s.mode,
+            nodes_added=s.nodes_added,
+            nodes_removed=s.nodes_removed,
+            edges_added=s.edges_added,
+            edges_removed=s.edges_removed,
+            ambiguous_added=s.ambiguous_added,
+            ambiguous_removed=s.ambiguous_removed,
+            errors=s.errors,
+        )
+
+    return SyncResponse(
+        repo_url=result.repo_url,
+        branch=result.branch,
+        mode=result.mode,
+        repo_id=clone.repo_id if clone else None,
+        owner=clone.owner if clone else None,
+        repo=clone.repo if clone else None,
+        path=str(clone.path) if clone else None,
+        diff=diff_payload,
     )
 
 

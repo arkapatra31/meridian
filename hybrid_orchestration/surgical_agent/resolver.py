@@ -19,7 +19,10 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import re
+from dataclasses import fields
+from pathlib import Path
 
 from claude_agent_sdk import (
     AgentDefinition,
@@ -34,7 +37,7 @@ from claude_agent_sdk import (
 
 from sdk import ClaudeCodeAgent
 
-from ..codebase_parser.models import AmbiguousRef, Edge, ParseResult
+from ..codebase_parser.models import AmbiguousRef, Edge, Node, ParseResult
 from ..codebase_parser.parser import resolve_repo_path
 from .prompts import (
     ORCHESTRATOR_SYSTEM_PROMPT,
@@ -43,6 +46,13 @@ from .prompts import (
 )
 
 logger = logging.getLogger("meridian.surgical_agent")
+
+# Dev short-circuit: when ENV=dev, skip the (expensive) Anthropic-backed
+# resolution and hydrate the cached `guardian_tree.json` snapshot instead.
+# Remove this fixture path once the full pipeline runs end-to-end on real
+# repos in CI/local.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_DEV_FIXTURE_PATH = _REPO_ROOT / "guardian_tree.json"
 
 _KIND_TO_EDGE = {
     "import": "IMPORTS",
@@ -70,6 +80,9 @@ def _researcher_definition() -> AgentDefinition:
 
 async def resolve_ambiguous(parse_result: ParseResult) -> ParseResult:
     """Augment `parse_result` with INFERRED edges from the Agent SDK."""
+    if (os.environ.get("ENV") or "").lower() == "dev":
+        return _load_dev_fixture()
+
     if not parse_result.ambiguous:
         return parse_result
 
@@ -303,3 +316,44 @@ def _chunk(items: list, size: int):
         chunk = [(i + j, item) for j, item in enumerate(items[i : i + size])]
         out.append(chunk)
     return out
+
+
+def _load_dev_fixture() -> ParseResult:
+    """Hydrate `guardian_tree.json` so dev runs skip the Anthropic loop.
+
+    Only reachable when `ENV=dev`. Throws loudly if the fixture is missing
+    rather than falling back to a real resolver call — that protects us
+    from silently burning tokens when someone forgets to drop the file.
+    """
+    if not _DEV_FIXTURE_PATH.is_file():
+        raise FileNotFoundError(
+            f"surgical_agent: dev fixture not found at {_DEV_FIXTURE_PATH}"
+        )
+    payload = json.loads(_DEV_FIXTURE_PATH.read_text(encoding="utf-8"))
+    logger.info(
+        "surgical_agent: ENV=dev — hydrating guardian_tree.json "
+        "(%d nodes, %d edges, %d ambiguous)",
+        len(payload.get("nodes", [])),
+        len(payload.get("edges", [])),
+        len(payload.get("ambiguous", [])),
+    )
+    return ParseResult(
+        repo=payload["repo"],
+        root=payload["root"],
+        nodes=[_dataclass_from_dict(Node, n) for n in payload.get("nodes", [])],
+        edges=[_dataclass_from_dict(Edge, e) for e in payload.get("edges", [])],
+        ambiguous=[
+            _dataclass_from_dict(AmbiguousRef, a)
+            for a in payload.get("ambiguous", [])
+        ],
+        files_parsed=payload.get("files_parsed", 0),
+        files_skipped=payload.get("files_skipped", 0),
+        languages=dict(payload.get("languages", {})),
+        errors=list(payload.get("errors", [])),
+    )
+
+
+def _dataclass_from_dict(cls, data: dict):
+    """Project `data` onto `cls`'s declared fields — extras are ignored."""
+    allowed = {f.name for f in fields(cls)}
+    return cls(**{k: v for k, v in data.items() if k in allowed})

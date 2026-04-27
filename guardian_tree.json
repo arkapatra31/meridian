@@ -4,8 +4,8 @@
     "files_parsed": 25,
     "files_skipped": 24,
     "node_count": 96,
-    "edge_count": 173,
-    "ambiguous_count": 135,
+    "edge_count": 174,
+    "ambiguous_count": 134,
     "languages": {
         "python": 25
     },
@@ -1218,7 +1218,7 @@
             "target": "audits/prometheus/metrics.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1226,7 +1226,7 @@
             "target": "audits/store.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1234,7 +1234,7 @@
             "target": "audits/router.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1242,7 +1242,7 @@
             "target": "webhook/__init__.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1250,7 +1250,7 @@
             "target": "main.py::lifespan",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1258,7 +1258,7 @@
             "target": "audits/store.py::init_db",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1266,7 +1266,7 @@
             "target": "main.py::health",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1274,7 +1274,7 @@
             "target": "webhook/models.py::PullRequestHead",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1282,7 +1282,7 @@
             "target": "webhook/models.py::PullRequestBase",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1290,7 +1290,7 @@
             "target": "webhook/models.py::PullRequestPayload",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1298,7 +1298,7 @@
             "target": "webhook/models.py::Repository",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1306,7 +1306,7 @@
             "target": "webhook/models.py::Installation",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1314,7 +1314,7 @@
             "target": "webhook/models.py::WebhookEvent",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1322,7 +1322,7 @@
             "target": "webhook/github_app.py::_build_jwt",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1330,7 +1330,7 @@
             "target": "webhook/github_app.py::get_installation_token",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1338,7 +1338,7 @@
             "target": "webhook/github_app.py::_build_jwt",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1346,7 +1346,7 @@
             "target": "agents/orchestrator.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1354,7 +1354,7 @@
             "target": "audits/store.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1362,7 +1362,7 @@
             "target": "webhook/context.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1370,7 +1370,7 @@
             "target": "webhook/github_app.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1378,7 +1378,7 @@
             "target": "webhook/models.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1386,7 +1386,7 @@
             "target": "webhook/handlers.py::handle_pull_request",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1394,7 +1394,7 @@
             "target": "webhook/github_app.py::get_installation_token",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1402,7 +1402,7 @@
             "target": "webhook/handlers.py::_fetch_diff",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1410,7 +1410,7 @@
             "target": "webhook/context.py::build_review_context",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1418,7 +1418,7 @@
             "target": "webhook/context.py::format_context_for_prompt",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1426,7 +1426,7 @@
             "target": "webhook/handlers.py::_post_review_comment",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1434,7 +1434,7 @@
             "target": "audits/store.py::save_review",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1442,7 +1442,7 @@
             "target": "webhook/handlers.py::_fetch_diff",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1450,7 +1450,7 @@
             "target": "webhook/handlers.py::_post_review_comment",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1458,7 +1458,7 @@
             "target": "webhook/router.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1466,7 +1466,7 @@
             "target": "webhook/context.py::_parse_changed_files",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1474,7 +1474,7 @@
             "target": "webhook/context.py::_parse_changed_symbols",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1482,7 +1482,7 @@
             "target": "webhook/context.py::build_review_context",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1490,7 +1490,7 @@
             "target": "webhook/context.py::_parse_changed_files",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1498,7 +1498,7 @@
             "target": "webhook/context.py::_parse_changed_symbols",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1506,7 +1506,7 @@
             "target": "webhook/context.py::_fetch_file_content",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1514,7 +1514,7 @@
             "target": "webhook/context.py::_fetch_file_tree",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1522,7 +1522,7 @@
             "target": "webhook/context.py::_search_callers",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1530,7 +1530,7 @@
             "target": "webhook/context.py::_fetch_file_content",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1538,7 +1538,7 @@
             "target": "webhook/context.py::_fetch_file_tree",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1546,7 +1546,7 @@
             "target": "webhook/context.py::_search_callers",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1554,7 +1554,7 @@
             "target": "webhook/context.py::format_context_for_prompt",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1562,7 +1562,7 @@
             "target": "webhook/handlers.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1570,7 +1570,7 @@
             "target": "webhook/models.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1578,7 +1578,7 @@
             "target": "webhook/router.py::_verify_signature",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1586,7 +1586,7 @@
             "target": "webhook/router.py::github_webhook",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1594,7 +1594,7 @@
             "target": "webhook/router.py::_verify_signature",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1602,7 +1602,7 @@
             "target": "webhook/models.py::WebhookEvent",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1610,7 +1610,7 @@
             "target": "llm/Azure.py::AzureLLM",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1618,7 +1618,7 @@
             "target": "llm/Azure.py::AzureLLM.__new__",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1626,7 +1626,7 @@
             "target": "llm/Azure.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1634,7 +1634,7 @@
             "target": "audits/store.py::init_db",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1642,7 +1642,7 @@
             "target": "audits/store.py::save_review",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1650,7 +1650,7 @@
             "target": "audits/store.py::get_reviews",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1658,7 +1658,7 @@
             "target": "audits/store.py::get_agent_results",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1666,7 +1666,7 @@
             "target": "audits/store.py::get_findings",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1674,7 +1674,7 @@
             "target": "audits/store.py::get_full_audit",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1682,7 +1682,7 @@
             "target": "audits/store.py::get_audit_summary",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1690,7 +1690,7 @@
             "target": "audits/store.py::get_cost_summary",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1698,7 +1698,7 @@
             "target": "audits/prometheus/__init__.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1706,7 +1706,7 @@
             "target": "audits/loki.py::push_review_log",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1714,7 +1714,7 @@
             "target": "audits/store.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1722,7 +1722,7 @@
             "target": "audits/router.py::list_reviews",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1730,7 +1730,7 @@
             "target": "audits/store.py::get_reviews",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1738,7 +1738,7 @@
             "target": "audits/router.py::review_detail",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1746,7 +1746,7 @@
             "target": "audits/store.py::get_full_audit",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1754,7 +1754,7 @@
             "target": "audits/router.py::review_agents",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1762,7 +1762,7 @@
             "target": "audits/store.py::get_agent_results",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1770,7 +1770,7 @@
             "target": "audits/router.py::agent_findings",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1778,7 +1778,7 @@
             "target": "audits/store.py::get_findings",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1786,7 +1786,7 @@
             "target": "audits/router.py::audit_summary",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1794,7 +1794,7 @@
             "target": "audits/store.py::get_audit_summary",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1802,7 +1802,7 @@
             "target": "audits/router.py::costs",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1810,7 +1810,7 @@
             "target": "audits/store.py::get_cost_summary",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1818,7 +1818,7 @@
             "target": "audits/prometheus/metrics.py::_collect_system_metrics",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1826,7 +1826,7 @@
             "target": "audits/prometheus/metrics.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1834,7 +1834,7 @@
             "target": "agents/base.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1842,7 +1842,7 @@
             "target": "agents/release.py::ReleaseAgent",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1850,7 +1850,7 @@
             "target": "agents/release.py::ReleaseAgent.__init__",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1858,7 +1858,7 @@
             "target": "agents/base.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1866,7 +1866,7 @@
             "target": "agents/patterns.py::PatternsAgent",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1874,7 +1874,7 @@
             "target": "agents/patterns.py::PatternsAgent.__init__",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1882,7 +1882,7 @@
             "target": "agents/base.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1890,7 +1890,7 @@
             "target": "agents/security.py::SecurityAgent",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1898,7 +1898,7 @@
             "target": "agents/security.py::SecurityAgent.__init__",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1906,7 +1906,7 @@
             "target": "agents/architecture.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1914,7 +1914,7 @@
             "target": "agents/security.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1922,7 +1922,7 @@
             "target": "agents/functional.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1930,7 +1930,7 @@
             "target": "agents/patterns.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1938,7 +1938,7 @@
             "target": "agents/standards.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1946,7 +1946,7 @@
             "target": "agents/performance.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1954,7 +1954,7 @@
             "target": "agents/release.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1962,7 +1962,7 @@
             "target": "agents/orchestrator.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1970,7 +1970,7 @@
             "target": "agents/base.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1978,7 +1978,7 @@
             "target": "agents/standards.py::StandardsAgent",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1986,7 +1986,7 @@
             "target": "agents/standards.py::StandardsAgent.__init__",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -1994,7 +1994,7 @@
             "target": "agents/base.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2002,7 +2002,7 @@
             "target": "agents/functional.py::FunctionalAgent",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2010,7 +2010,7 @@
             "target": "agents/functional.py::FunctionalAgent.__init__",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2018,7 +2018,7 @@
             "target": "agents/architecture.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2026,7 +2026,7 @@
             "target": "agents/functional.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2034,7 +2034,7 @@
             "target": "agents/patterns.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2042,7 +2042,7 @@
             "target": "agents/performance.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2050,7 +2050,7 @@
             "target": "agents/release.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2058,7 +2058,7 @@
             "target": "agents/security.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2066,7 +2066,7 @@
             "target": "agents/standards.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2074,7 +2074,7 @@
             "target": "audits/loki.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2082,7 +2082,7 @@
             "target": "audits/prometheus/metrics.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2090,7 +2090,7 @@
             "target": "agents/orchestrator.py::ReviewOrchestrator",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2098,7 +2098,7 @@
             "target": "agents/orchestrator.py::ReviewOrchestrator.__init__",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2106,7 +2106,7 @@
             "target": "agents/architecture.py::ArchitectureAgent",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2114,7 +2114,7 @@
             "target": "agents/security.py::SecurityAgent",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2122,7 +2122,7 @@
             "target": "agents/functional.py::FunctionalAgent",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2130,7 +2130,7 @@
             "target": "agents/patterns.py::PatternsAgent",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2138,7 +2138,7 @@
             "target": "agents/standards.py::StandardsAgent",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2146,7 +2146,7 @@
             "target": "agents/performance.py::PerformanceAgent",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2154,7 +2154,7 @@
             "target": "agents/release.py::ReleaseAgent",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2162,7 +2162,7 @@
             "target": "agents/orchestrator.py::ReviewOrchestrator.run",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2170,7 +2170,7 @@
             "target": "agents/orchestrator.py::ReviewOrchestrator.push_to_loki_background",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2178,7 +2178,7 @@
             "target": "agents/orchestrator.py::ReviewOrchestrator._push_to_loki",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2186,7 +2186,7 @@
             "target": "audits/loki.py::push_review_log",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2194,7 +2194,7 @@
             "target": "agents/orchestrator.py::ReviewOrchestrator.format_review",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2202,7 +2202,7 @@
             "target": "agents/orchestrator.py::ReviewOrchestrator._donut_chart_url",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2210,7 +2210,7 @@
             "target": "agents/orchestrator.py::ReviewOrchestrator._donut_chart_url",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2218,7 +2218,7 @@
             "target": "agents/base.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2226,7 +2226,7 @@
             "target": "agents/architecture.py::ArchitectureAgent",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2234,7 +2234,7 @@
             "target": "agents/architecture.py::ArchitectureAgent.__init__",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2242,7 +2242,7 @@
             "target": "agents/base.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2250,7 +2250,7 @@
             "target": "agents/performance.py::PerformanceAgent",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2258,7 +2258,7 @@
             "target": "agents/performance.py::PerformanceAgent.__init__",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2266,7 +2266,7 @@
             "target": "audits/prometheus/metrics.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2274,7 +2274,7 @@
             "target": "llm/__init__.py",
             "type": "IMPORTS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2282,7 +2282,7 @@
             "target": "agents/base.py::BaseReviewAgent",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2290,7 +2290,7 @@
             "target": "agents/base.py::BaseReviewAgent.__init__",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2298,7 +2298,7 @@
             "target": "agents/base.py::BaseReviewAgent._load_skill",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2306,7 +2306,7 @@
             "target": "llm/__init__.py::AzureLLM",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2314,7 +2314,7 @@
             "target": "agents/base.py::BaseReviewAgent._build_prompt",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2322,7 +2322,7 @@
             "target": "agents/base.py::BaseReviewAgent._load_skill",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2330,7 +2330,7 @@
             "target": "agents/base.py::BaseReviewAgent.name",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2338,7 +2338,7 @@
             "target": "agents/base.py::BaseReviewAgent.system_prompt",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2346,7 +2346,7 @@
             "target": "agents/base.py::BaseReviewAgent._build_prompt",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2354,7 +2354,7 @@
             "target": "agents/base.py::BaseReviewAgent._parse_response",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2362,7 +2362,7 @@
             "target": "agents/base.py::BaseReviewAgent._record_token_usage",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2370,7 +2370,7 @@
             "target": "agents/base.py::BaseReviewAgent._record_findings",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2378,7 +2378,7 @@
             "target": "agents/base.py::BaseReviewAgent.review",
             "type": "CONTAINS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2386,7 +2386,7 @@
             "target": "agents/base.py::BaseReviewAgent._record_token_usage",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2394,7 +2394,7 @@
             "target": "agents/base.py::BaseReviewAgent._parse_response",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2402,7 +2402,7 @@
             "target": "agents/base.py::BaseReviewAgent._record_findings",
             "type": "CALLS",
             "confidence": "EXTRACTED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {}
         },
         {
@@ -2410,9 +2410,9 @@
             "target": "agents/orchestrator.py::ReviewOrchestrator.run",
             "type": "CALLS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "orchestrator instantiated as ReviewOrchestrator() at line 16, call at line 50 invokes .run() method",
+                "reasoning": "orchestrator is ReviewOrchestrator() instance at webhook/handlers.py:16, run() method defined at agents/orchestrator.py:46",
                 "raw": "orchestrator.run"
             }
         },
@@ -2421,9 +2421,9 @@
             "target": "agents/orchestrator.py::ReviewOrchestrator.format_review",
             "type": "CALLS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "orchestrator is ReviewOrchestrator() at webhook/handlers.py:16; format_review method defined at agents/orchestrator.py:115",
+                "reasoning": "orchestrator is ReviewOrchestrator() instance at webhook/handlers.py:16, format_review() method defined at agents/orchestrator.py:115",
                 "raw": "orchestrator.format_review"
             }
         },
@@ -2432,9 +2432,9 @@
             "target": "agents/orchestrator.py::ReviewOrchestrator.push_to_loki_background",
             "type": "CALLS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "orchestrator instance defined at handlers.py:16 as ReviewOrchestrator(); method called at handlers.py:73",
+                "reasoning": "Method defined as staticmethod on ReviewOrchestrator class",
                 "raw": "orchestrator.push_to_loki_background"
             }
         },
@@ -2443,9 +2443,9 @@
             "target": "audits/prometheus/metrics.py::SYSTEM_CPU_PERCENT",
             "type": "CALLS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "SYSTEM_CPU_PERCENT is a Gauge metric defined at line 71 in audits/prometheus/metrics.py.",
+                "reasoning": "Gauge instance defined at audits/prometheus/metrics.py line 71",
                 "raw": "SYSTEM_CPU_PERCENT.set"
             }
         },
@@ -2454,9 +2454,9 @@
             "target": "audits/prometheus/metrics.py::SYSTEM_MEMORY_RSS_BYTES",
             "type": "CALLS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "SYSTEM_MEMORY_RSS_BYTES is defined locally at line 76 as a module-level Gauge variable.",
+                "reasoning": "Gauge instance defined at audits/prometheus/metrics.py line 76",
                 "raw": "SYSTEM_MEMORY_RSS_BYTES.set"
             }
         },
@@ -2465,10 +2465,21 @@
             "target": "audits/prometheus/metrics.py::SYSTEM_MEMORY_PERCENT",
             "type": "CALLS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "SYSTEM_MEMORY_PERCENT is a Gauge metric defined at line 81 in audits/prometheus/metrics.py.",
+                "reasoning": "Gauge instance defined at audits/prometheus/metrics.py line 81",
                 "raw": "SYSTEM_MEMORY_PERCENT.set"
+            }
+        },
+        {
+            "source": "audits/prometheus/metrics.py::_collect_system_metrics",
+            "target": "audits/prometheus/metrics.py::SYSTEM_THREADS",
+            "type": "CALLS",
+            "confidence": "INFERRED",
+            "weight": 1.0,
+            "metadata": {
+                "reasoning": "Gauge instance defined at audits/prometheus/metrics.py line 91",
+                "raw": "SYSTEM_THREADS.set"
             }
         },
         {
@@ -2476,9 +2487,9 @@
             "target": "audits/prometheus/metrics.py::SYSTEM_OPEN_FDS",
             "type": "CALLS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "SYSTEM_OPEN_FDS defined at line 86 as Gauge metric in metrics.py",
+                "reasoning": "Gauge instance defined at audits/prometheus/metrics.py line 86",
                 "raw": "SYSTEM_OPEN_FDS.set"
             }
         },
@@ -2487,9 +2498,9 @@
             "target": "agents/base.py::BaseReviewAgent",
             "type": "INHERITS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "Imported from agents.base at agents/release.py:1",
+                "reasoning": "BaseReviewAgent class defined at agents/base.py:25",
                 "raw": "BaseReviewAgent"
             }
         },
@@ -2498,9 +2509,9 @@
             "target": "agents/base.py::BaseReviewAgent",
             "type": "INHERITS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "Imported from agents.base at agents/patterns.py:1",
+                "reasoning": "BaseReviewAgent class defined at agents/base.py:25, inherits by PatternsAgent",
                 "raw": "BaseReviewAgent"
             }
         },
@@ -2509,9 +2520,9 @@
             "target": "agents/base.py::BaseReviewAgent",
             "type": "INHERITS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "Imported from agents.base at agents/security.py:1",
+                "reasoning": "BaseReviewAgent class defined at agents/base.py:25, SecurityAgent inherits from it",
                 "raw": "BaseReviewAgent"
             }
         },
@@ -2520,9 +2531,9 @@
             "target": "agents/base.py::BaseReviewAgent",
             "type": "INHERITS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "Imported from agents.base at agents/standards.py:1",
+                "reasoning": "Class definition found at agents/base.py; StandardsAgent inherits from it",
                 "raw": "BaseReviewAgent"
             }
         },
@@ -2531,20 +2542,20 @@
             "target": "agents/base.py::BaseReviewAgent",
             "type": "INHERITS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "Imported from agents.base at agents/functional.py:1",
+                "reasoning": "BaseReviewAgent class defined at agents/base.py:25, inherited by FunctionalAgent",
                 "raw": "BaseReviewAgent"
             }
         },
         {
             "source": "agents/orchestrator.py::ReviewOrchestrator.run",
-            "target": "audits/prometheus/metrics.py::REVIEW_REQUESTS",
+            "target": "audits/prometheus/metrics.py",
             "type": "CALLS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "Counter defined at audits/prometheus/metrics.py:57",
+                "reasoning": "REVIEW_REQUESTS is module-level Counter defined at audits/prometheus/metrics.py:57",
                 "raw": "REVIEW_REQUESTS.labels"
             }
         },
@@ -2553,31 +2564,20 @@
             "target": "agents/base.py::BaseReviewAgent.review",
             "type": "CALLS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "Method defined at agents/base.py:117, called on BaseReviewAgent subclass instances",
+                "reasoning": "review method defined at agents/base.py:117 in BaseReviewAgent class",
                 "raw": "agent.review"
             }
         },
         {
             "source": "agents/orchestrator.py::ReviewOrchestrator.run",
-            "target": "audits/prometheus/metrics.py::AGENT_SCORE",
+            "target": "audits/prometheus/metrics.py",
             "type": "CALLS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "Gauge defined at audits/prometheus/metrics.py:29",
-                "raw": "AGENT_SCORE.labels"
-            }
-        },
-        {
-            "source": "agents/orchestrator.py::ReviewOrchestrator.run",
-            "target": "audits/prometheus/metrics.py::REVIEW_DURATION",
-            "type": "CALLS",
-            "confidence": "INFERRED",
-            "weight": 1,
-            "metadata": {
-                "reasoning": "Histogram defined at audits/prometheus/metrics.py:63",
+                "reasoning": "REVIEW_DURATION is module-level Histogram defined in audits/prometheus/metrics.py:63",
                 "raw": "REVIEW_DURATION.observe"
             }
         },
@@ -2586,9 +2586,9 @@
             "target": "agents/orchestrator.py::ReviewOrchestrator._push_to_loki",
             "type": "CALLS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "Static method defined at line 100 in agents/orchestrator.py, called at line 96 within same class",
+                "reasoning": "Method defined in same class at line 100",
                 "raw": "ReviewOrchestrator._push_to_loki"
             }
         },
@@ -2597,9 +2597,9 @@
             "target": "agents/base.py::BaseReviewAgent",
             "type": "INHERITS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "agents/architecture.py:1 imports BaseReviewAgent from agents.base, line 4 inherits from it",
+                "reasoning": "Imported from agents.base at line 1, parent class",
                 "raw": "BaseReviewAgent"
             }
         },
@@ -2608,10 +2608,21 @@
             "target": "agents/base.py::BaseReviewAgent",
             "type": "INHERITS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "agents/performance.py:1 imports BaseReviewAgent from agents.base, line 4 inherits from it",
+                "reasoning": "Imported from agents.base at line 1, parent class",
                 "raw": "BaseReviewAgent"
+            }
+        },
+        {
+            "source": "agents/base.py::BaseReviewAgent._record_token_usage",
+            "target": "audits/prometheus/metrics.py::AGENT_TOKENS_PROMPT",
+            "type": "CALLS",
+            "confidence": "INFERRED",
+            "weight": 1.0,
+            "metadata": {
+                "reasoning": "Counter metric defined at audits/prometheus/metrics.py:37-41",
+                "raw": "AGENT_TOKENS_PROMPT.labels"
             }
         },
         {
@@ -2619,9 +2630,9 @@
             "target": "audits/prometheus/metrics.py::AGENT_TOKENS_COMPLETION",
             "type": "CALLS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "Prometheus Counter defined at audits/prometheus/metrics.py:43",
+                "reasoning": "Counter metric defined at audits/prometheus/metrics.py:43",
                 "raw": "AGENT_TOKENS_COMPLETION.labels"
             }
         },
@@ -2630,9 +2641,9 @@
             "target": "audits/prometheus/metrics.py::AGENT_TOKENS_TOTAL",
             "type": "CALLS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "Module-level Counter variable defined at audits/prometheus/metrics.py:49",
+                "reasoning": "Counter metric defined at audits/prometheus/metrics.py:49",
                 "raw": "AGENT_TOKENS_TOTAL.labels"
             }
         },
@@ -2641,9 +2652,9 @@
             "target": "audits/prometheus/metrics.py::AGENT_FINDINGS",
             "type": "CALLS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "Prometheus Counter defined at audits/prometheus/metrics.py:23",
+                "reasoning": "Counter metric defined at audits/prometheus/metrics.py:23-27",
                 "raw": "AGENT_FINDINGS.labels"
             }
         },
@@ -2652,9 +2663,9 @@
             "target": "audits/prometheus/metrics.py::AGENT_INVOCATIONS",
             "type": "CALLS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "Prometheus Counter metric defined at audits/prometheus/metrics.py:10",
+                "reasoning": "Counter metric defined at audits/prometheus/metrics.py:10",
                 "raw": "AGENT_INVOCATIONS.labels"
             }
         },
@@ -2663,9 +2674,9 @@
             "target": "audits/prometheus/metrics.py::AGENT_DURATION",
             "type": "CALLS",
             "confidence": "INFERRED",
-            "weight": 1,
+            "weight": 1.0,
             "metadata": {
-                "reasoning": "Prometheus Histogram defined at audits/prometheus/metrics.py:16",
+                "reasoning": "Histogram metric defined at audits/prometheus/metrics.py:16-21",
                 "raw": "AGENT_DURATION.labels"
             }
         }
@@ -3497,14 +3508,6 @@
         },
         {
             "source": "audits/prometheus/metrics.py::_collect_system_metrics",
-            "raw": "SYSTEM_THREADS.set",
-            "kind": "call",
-            "file": "audits/prometheus/metrics.py",
-            "line": 113,
-            "metadata": {}
-        },
-        {
-            "source": "audits/prometheus/metrics.py::_collect_system_metrics",
             "raw": "process.num_threads",
             "kind": "call",
             "file": "audits/prometheus/metrics.py",
@@ -3562,6 +3565,14 @@
         {
             "source": "agents/orchestrator.py::ReviewOrchestrator.run",
             "raw": "AGENT_SCORE.labels(\n                agent_name=r[\"agent\"], repository=repository\n            ).set",
+            "kind": "call",
+            "file": "agents/orchestrator.py",
+            "line": 85,
+            "metadata": {}
+        },
+        {
+            "source": "agents/orchestrator.py::ReviewOrchestrator.run",
+            "raw": "AGENT_SCORE.labels",
             "kind": "call",
             "file": "agents/orchestrator.py",
             "line": 85,
@@ -3666,14 +3677,6 @@
         {
             "source": "agents/base.py::BaseReviewAgent._record_token_usage",
             "raw": "AGENT_TOKENS_PROMPT.labels(agent_name=self.name).inc",
-            "kind": "call",
-            "file": "agents/base.py",
-            "line": 100,
-            "metadata": {}
-        },
-        {
-            "source": "agents/base.py::BaseReviewAgent._record_token_usage",
-            "raw": "AGENT_TOKENS_PROMPT.labels",
             "kind": "call",
             "file": "agents/base.py",
             "line": 100,
