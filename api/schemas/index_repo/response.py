@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class IndexRepoResponse(BaseModel):
@@ -6,6 +6,3 @@ class IndexRepoResponse(BaseModel):
     owner: str
     repo: str
     branch: str | None
-    reused: bool = Field(
-        ..., description="True if an existing clone was reused (no fresh clone happened)"
-    )

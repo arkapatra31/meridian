@@ -14,7 +14,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ingestion_layer.github_mcp.helpers import parse_owner_repo, repo_id
-from ingestion_layer.utils.db_utils import has_active_graph
 from ingestion_layer.utils.utils import cache_root
 
 logger = logging.getLogger("meridian.repo_cache")
@@ -27,7 +26,6 @@ class CloneResult:
     repo: str
     branch: str | None
     path: Path
-    reused: bool
 
 
 async def clone_repo(
@@ -37,8 +35,12 @@ async def clone_repo(
 ) -> CloneResult:
     """Clone `repo_url` into `<CACHE_ROOT>/<repo>`.
 
-    If the destination already exists, the existing clone is reused — re-cloning
-    the same repo is wasted work; use the sync flow when you need updates.
+    Caller is the ingestion dispatcher, which only routes here when no active
+    graph exists. A leftover cache dir from an aborted prior run is wiped
+    before cloning — git would otherwise refuse with "destination exists".
+    The wipe is gated on (a) the path being inside the cache root and (b) the
+    dir actually being a git clone, so a stray non-git directory surfaces an
+    error instead of being silently destroyed.
     """
     owner, repo = parse_owner_repo(repo_url)
     rid = repo_id(repo_url)
@@ -47,13 +49,18 @@ async def clone_repo(
     root.mkdir(parents=True, exist_ok=True)
     dest = root / repo
 
-    if await asyncio.to_thread(has_active_graph, repo_url, branch or "main"):
-        logger.info(
-            "repo_cache: active graph already exists for %s@%s — skipping clone",
-            repo_url,
-            branch or "main",
-        )
-        return CloneResult(rid, owner, repo, branch, dest, reused=True)
+    if dest.exists():
+        resolved = dest.resolve()
+        if root.resolve() not in resolved.parents:
+            raise CloneError(
+                f"refusing to delete path outside cache root: {resolved}"
+            )
+        if not (dest / ".git").exists():
+            raise CloneError(
+                f"cache dir exists but isn't a git clone: {dest}"
+            )
+        logger.info("repo_cache: clearing stale clone at %s", dest)
+        await asyncio.to_thread(shutil.rmtree, dest, ignore_errors=True)
 
     # Authenticated HTTPS URL form GitHub accepts for PAT auth.
     auth_url = f"https://x-access-token:{pat}@github.com/{owner}/{repo}.git"
@@ -86,7 +93,7 @@ async def clone_repo(
         raise CloneError(f"git clone failed (exit {proc.returncode}): {msg.strip()}")
 
     logger.info("repo_cache: cloned %s/%s to %s", owner, repo, dest)
-    return CloneResult(rid, owner, repo, branch, dest, reused=False)
+    return CloneResult(rid, owner, repo, branch, dest)
 
 
 class CloneError(RuntimeError):
