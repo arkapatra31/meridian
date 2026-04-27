@@ -26,41 +26,40 @@ flowchart TD
     subgraph Ingestion
         C1["C1: API Gateway (FastAPI)\nJWT auth · REST + WS · Static SPA"]
         C1 --> decision{Graph in DB?}
-        decision -- no --> C2a["git clone\n(subprocess)"]
-        decision -- yes --> C2b_pull["git pull\n(subprocess)"]
-        C2a --> C3["C3: Ephemeral Cache\n/var/meridian/cache/"]
-        C2b_pull --> C2b["C2b: GitHub MCP\nPRs · issues · contributors"]
+        decision -- no --> C3a["C3a: Git Client\nclone via subprocess\n→ /var/meridian/cache/"]
+        decision -- yes --> C3a_pull["C3a: Git Client\npull via subprocess"]
+        C3a_pull --> C3b["C3b: GitHub MCP\nPRs · issues · contributors"]
     end
 
     subgraph Processing
-        C3 & C2b --> C4["C4: Agent SDK Orchestrator"]
-        C4 --> C5["C5: Pass 1 — Tree-sitter\nDeterministic · 25 languages\nEXTRACTED edges"]
-        C5 --> C6["C6: Pass 2 — Agent Tools\ngrep / glob / read\nINFERRED edges"]
-        C5 & C6 --> C7["C7: Diff Engine\nFull build or incremental patch"]
+        C3a & C3b --> C2["C2: Orchestrator"]
+        C2 --> C4a["C4a: Pass 1 — Tree-sitter\nDeterministic · 25 languages\nEXTRACTED edges"]
+        C4a --> C4b["C4b: Pass 2 — Agent Tools\ngrep / glob / read\nINFERRED edges"]
+        C4a & C4b --> C4c["C4c: Tree Indexer\nPersists parse tree (FULL)\nMutates in place (PATCH)"]
     end
 
     subgraph Graph Layer
-        C7 --> C8["C8: Graph Builder\n(NetworkX)"]
-        C8 --> C9["C9: Leiden Clustering\n(graspologic)"]
-        C9 --> C10["C10: Graph Store\nSQLite · meridian.db"]
+        C4c --> C5a["C5a: Graph Builder\n(NetworkX)"]
+        C5a --> C5b["C5b: Leiden Clustering\n(graspologic)"]
+        C5b --> C8["C8: Graph Store\nSQLite · meridian.db"]
     end
 
     subgraph Output
-        C10 --> C11["C11: QnA Agent\nBFS subgraph · ClaudeSDKClient"]
-        C10 --> C12["C12: React Frontend\nForce graph (WebGL)\nSemantic zoom · search"]
+        C8 --> C6["C6: QnA Agent\nBFS subgraph · ClaudeSDKClient"]
+        C8 --> C7["C7: React Frontend\nForce graph (WebGL)\nSemantic zoom · search"]
     end
 
-    C11 & C12 --> EndUser([Technical End User])
+    C6 & C7 --> EndUser([Technical End User])
 
     classDef gitProtocol fill:#2d6a4f,color:#fff,stroke:none
     classDef githubApi fill:#4a4e8c,color:#fff,stroke:none
     classDef anthropicApi fill:#7b3f2e,color:#fff,stroke:none
     classDef local fill:#3a3a3a,color:#fff,stroke:none
 
-    class C2a,C3 gitProtocol
-    class C2b,C2b_pull githubApi
-    class C4,C6,C11 anthropicApi
-    class C5,C7,C8,C9,C10 local
+    class C3a,C3a_pull gitProtocol
+    class C3b githubApi
+    class C2,C4b,C6 anthropicApi
+    class C4a,C4c,C5a,C5b,C8 local
 ```
 
 ### Layer 1 — Ingestion
@@ -68,9 +67,8 @@ flowchart TD
 | Component | Technology | Role |
 | ----------- | ---------- | ------ |
 | C1: API Gateway | FastAPI | REST endpoints, WebSocket build progress, serves React SPA |
-| C2a: Git Client | git CLI (subprocess) | Initial clone + pull via git protocol — zero API rate limit impact |
-| C2b: GitHub MCP | GitHub MCP Server | Metadata only: diffs, PRs, issues, contributors |
-| C3: Repo Cache | Server filesystem | Ephemeral git clones at `/var/meridian/cache/{repo_hash}/` |
+| C3a: Git Client | git CLI (subprocess) | Initial clone + pull via git protocol — zero API rate limit impact. Writes ephemeral clones to `/var/meridian/cache/{repo_hash}/` |
+| C3b: GitHub MCP | GitHub MCP Server | Metadata only: diffs, PRs, issues, contributors |
 
 **Hybrid ingestion model (rate-limit protection):**
 
@@ -85,10 +83,10 @@ flowchart TD
 
 | Component | Technology | Role |
 | ----------- | ---------- | ------ |
-| C4: Agent SDK Orchestrator | Claude Code Agent SDK | Coordinates pipeline; makes build vs. update decisions |
-| C5: Tree-sitter (Pass 1) | py-tree-sitter | Deterministic AST extraction across 25 languages → `EXTRACTED` edges |
-| C6: Agent Reasoning (Pass 2) | Agent SDK tools | Resolves ambiguous edges with grep/glob/read → `INFERRED` edges |
-| C7: Diff Engine | git diff + internal logic | Detects changed files; scopes re-processing |
+| C2: Orchestrator | Claude Code Agent SDK | Coordinates pipeline; makes build vs. update decisions |
+| C4a: Tree-sitter (Pass 1) | py-tree-sitter | Deterministic AST extraction across 25 languages → `EXTRACTED` edges |
+| C4b: Agent Reasoning (Pass 2) | Agent SDK tools | Resolves ambiguous edges with grep/glob/read → `INFERRED` edges |
+| C4c: Tree Indexer | SQLAlchemy + SQLite | Persists the C4a+C4b parse tree to `trees`; mutated in place during PATCH |
 
 **Pass 1** extracts modules, classes, functions, methods, and all deterministic edges (imports, calls, contains, inherits, decorates) from raw ASTs. Ambiguous references are flagged for Pass 2.
 
@@ -98,9 +96,9 @@ flowchart TD
 
 | Component | Technology | Role |
 | ----------- | ---------- | ------ |
-| C8: Graph Builder | NetworkX | Merges `EXTRACTED` + `INFERRED` edges into a unified graph |
-| C9: Leiden Clustering | graspologic | Community detection on graph topology; no embeddings |
-| C10: Graph Store | SQLite (`meridian.db`) | Durable persistence for graphs and users |
+| C5a: Graph Builder | NetworkX | Merges `EXTRACTED` + `INFERRED` edges into a unified graph |
+| C5b: Leiden Clustering | graspologic | Community detection on graph topology; no embeddings |
+| C8: Graph Store | SQLite (`meridian.db`) | Durable persistence for graphs and users |
 
 **Node schema:**
 ```json
@@ -137,8 +135,8 @@ Confidence levels: `EXTRACTED` (tree-sitter, high trust) · `INFERRED` (agent, m
 
 | Component | Technology | Role |
 | ----------- | ---------- | ------ |
-| C11: QnA Agent | ClaudeSDKClient | Answers questions grounded in a BFS-extracted subgraph (~2k tokens) |
-| C12: React Frontend | React + react-force-graph (WebGL) | Interactive graph visualization with semantic zoom |
+| C6: QnA Agent | ClaudeSDKClient | Answers questions grounded in a BFS-extracted subgraph (~2k tokens) |
+| C7: React Frontend | React + react-force-graph (WebGL) | Interactive graph visualization with semantic zoom |
 
 **QnA flow:** BFS from keyword-matched nodes → 2-hop subgraph (~2k tokens) → single ClaudeSDKClient completion → answer with node/file citations. No tool loop needed; the graph is the context.
 

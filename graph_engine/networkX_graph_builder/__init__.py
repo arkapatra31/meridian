@@ -1,4 +1,4 @@
-"""C8 — NetworkX graph builder."""
+"""C5a — NetworkX graph builder."""
 
 from .builder import GraphBuildResult, build_graph
 

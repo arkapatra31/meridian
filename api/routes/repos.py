@@ -3,9 +3,9 @@ from dataclasses import asdict
 from fastapi import APIRouter, Header, HTTPException, status
 from fastapi.concurrency import run_in_threadpool
 
-from hybrid_orchestration.codebase_parser import parse_codebase
-from hybrid_orchestration.orchestrator import sync_repo
-from hybrid_orchestration.surgical_agent import resolve_ambiguous
+from hybrid_parsing.codebase_parser import parse_codebase
+from hybrid_parsing.surgical_agent import resolve_ambiguous
+from orchestrator.orchestrator import sync_repo
 from ingestion_layer.repo_cache.clone_repo import CloneError, clone_repo
 
 from ..schemas import (

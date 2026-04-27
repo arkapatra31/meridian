@@ -22,7 +22,7 @@ Dropped entirely (not emitted as edges OR ambiguous refs):
     These add no first-party graph signal and would only waste Pass 2 tokens.
 
 Anything that requires cross-file knowledge beyond simple import binding is
-left for Pass 2 (C6, the surgical agent) — this pass deliberately does NOT
+left for Pass 2 (C4b, the surgical agent) — this pass deliberately does NOT
 guess at attribute calls or dynamic dispatch.
 """
 

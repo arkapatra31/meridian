@@ -1,7 +1,7 @@
 """Data types produced by Pass 1 (tree-sitter) parsing.
 
 Mirrors the node/edge schema in CLAUDE.md so results drop straight into the
-graph builder (C8) without translation.
+graph builder (C5a) without translation.
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ class Edge:
 class AmbiguousRef:
     """A reference tree-sitter saw but couldn't fully resolve.
 
-    Pass 2 (C6, the surgical Agent SDK) consumes these and produces INFERRED edges.
+    Pass 2 (C4b, the surgical Agent SDK) consumes these and produces INFERRED edges.
     """
 
     source: str

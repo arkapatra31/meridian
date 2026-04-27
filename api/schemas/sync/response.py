@@ -6,9 +6,9 @@ from pydantic import BaseModel, Field
 class SyncResponse(BaseModel):
     """Result of `POST /repos/sync`.
 
-    `mode` is the dispatch marker chosen by the orchestrator (C4):
+    `mode` is the dispatch marker chosen by the orchestrator (C2):
       - `FULL` — no active graph existed, repo was freshly cloned, the parse
-        tree was indexed, and C8 persisted a `graphs` row.
+        tree was indexed, and C5a persisted a `graphs` row.
       - `PATCH` — active graph existed, incremental sync ran.
 
     Counts are intentionally omitted — clients fetch the graph payload via
@@ -34,6 +34,6 @@ class SyncResponse(BaseModel):
     )
     graph_id: str | None = Field(
         default=None,
-        description="ID of the persisted graph (status='building' until C9 runs)",
+        description="ID of the persisted graph (status='BUILDING' until C5b runs)",
     )
     errors: list[str] = Field(default_factory=list)

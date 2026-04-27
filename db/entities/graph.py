@@ -2,20 +2,34 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from sqlalchemy import JSON, TIMESTAMP, ForeignKey, Integer, String, Text, func
+from sqlalchemy import (
+    JSON,
+    TIMESTAMP,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
 
 
 class GraphStatus(str, Enum):
-    BUILDING = "building"
-    READY = "ready"
-    ERROR = "error"
+    BUILDING = "BUILDING"
+    READY = "READY"
+    ERROR = "ERROR"
 
 
 class Graph(Base):
     __tablename__ = "graphs"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "repo_url", "branch", name="uq_graphs_user_repo_branch"
+        ),
+    )
 
     graph_id: Mapped[str] = mapped_column(String, primary_key=True)
     user_id: Mapped[str] = mapped_column(

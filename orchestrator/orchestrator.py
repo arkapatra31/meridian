@@ -1,15 +1,15 @@
-"""C4 — Agent SDK Orchestrator.
+"""C2 — Agent SDK Orchestrator.
 
 Single entry point that drives the full Meridian pipeline. Decides FULL vs
 PATCH based on whether a READY graph already exists for `(repo_url, branch)`,
 then chains the appropriate stages:
 
-    FULL:   clone (subprocess git) → C5 parse → C6 resolve →
-            C7 index_tree → C8 build_graph → persist `graphs` row
-            (status='building' until C9 lands and re-clusters in place).
+    FULL:   clone (subprocess git) → C4a parse → C4b resolve →
+            C4c index_tree → C5a build_graph → persist `graphs` row
+            (status='BUILDING' until C5b lands and re-clusters in place).
 
-    PATCH:  git pull (subprocess) → diff → re-run C5/C6 on changed files →
-            mutate stored tree → re-run C8 → re-cluster affected
+    PATCH:  git pull (subprocess) → diff → re-run C4a/C4b on changed files →
+            mutate stored tree → re-run C5a → re-cluster affected
             communities → persist. (Skeleton only — see _patch_sync.)
 
 The ingestion layer below is intentionally dumb: it exposes `clone_repo`,
@@ -22,17 +22,20 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi.concurrency import run_in_threadpool
 
+from db.entities import SyncMode, SyncRunStatus
+from graph_engine.leiden_clustering import ClusterResult, cluster_graph
 from graph_engine.networkX_graph_builder import GraphBuildResult, build_graph
-from graph_engine.utils.db_utils import persist_graph
-from hybrid_orchestration.codebase_parser import parse_codebase
-from hybrid_orchestration.codebase_parser.models import ParseResult
-from hybrid_orchestration.surgical_agent import resolve_ambiguous
-from hybrid_orchestration.tree_indexer import index_tree
-from hybrid_orchestration.utils.db_utils import has_active_graph
+from graph_engine.utils.db_utils import link_tree_to_graph, persist_graph
+from hybrid_parsing.codebase_parser import parse_codebase
+from hybrid_parsing.codebase_parser.models import ParseResult
+from hybrid_parsing.surgical_agent import resolve_ambiguous
+from hybrid_parsing.tree_indexer import index_tree
+from orchestrator.utils.db_utils import has_active_graph, record_sync_run
 from ingestion_layer.repo_cache.clone_repo import CloneResult, clone_repo
 from ingestion_layer.utils.db_utils import persist_clone
 
@@ -47,10 +50,11 @@ class OrchestrationResult:
     branch: str
     mode: Mode
     clone: CloneResult | None  # populated when mode == "FULL"
-    tree: ParseResult | None  # parse tree from C5/C6
-    tree_id: str | None  # populated once the tree is indexed (C7)
-    graph: GraphBuildResult | None  # populated once C8 has run
-    graph_id: str | None  # populated once the graph is persisted (C10 stub)
+    tree: ParseResult | None  # parse tree from C4a/C4b
+    tree_id: str | None  # populated once the tree is indexed (C4c)
+    graph: GraphBuildResult | None  # populated once C5a has run
+    graph_id: str | None  # populated once the graph is persisted (C8 stub)
+    cluster: ClusterResult | None  # populated once C5b has clustered the graph
 
 
 async def sync_repo(
@@ -77,6 +81,7 @@ async def sync_repo(
             tree_id=None,
             graph=None,
             graph_id=None,
+            cluster=None,
         )
 
     logger.info(
@@ -90,8 +95,9 @@ async def sync_repo(
 async def _full_build(
     repo_url: str, pat: str, branch: str | None
 ) -> OrchestrationResult:
-    """Clone → C5 → C6 → C7 (index) → C8 (build) → persist `graphs` row."""
+    """Clone → C4a → C4b → C4c → C5a → C5b → link tree → audit row."""
     branch_name = branch or "main"
+    started_at = datetime.now(timezone.utc)
 
     clone_result = await clone_repo(repo_url, pat, branch=branch)
     await asyncio.to_thread(
@@ -115,6 +121,23 @@ async def _full_build(
         repo_clone_id=clone_result.repo_id,
         last_commit_sha=graph_result.last_commit_sha,
     )
+    cluster_result = await asyncio.to_thread(cluster_graph, graph_id)
+
+    # C5b just flipped the graphs row to READY. Link this build's tree onto
+    # the (now final) graph_id, evicting any stale tree from a prior build,
+    # then drop the audit row.
+    await asyncio.to_thread(link_tree_to_graph, tree_id, graph_id)
+    await asyncio.to_thread(
+        record_sync_run,
+        graph_id=graph_id,
+        mode=SyncMode.FULL,
+        status=SyncRunStatus.SUCCESS,
+        started_at=started_at,
+        current_sha=graph_result.last_commit_sha,
+        nodes_added=graph_result.node_count,
+        edges_added=graph_result.edge_count,
+        ambiguous_added=len(tree.ambiguous),
+    )
 
     return OrchestrationResult(
         repo_url=repo_url,
@@ -125,11 +148,12 @@ async def _full_build(
         tree_id=tree_id,
         graph=graph_result,
         graph_id=graph_id,
+        cluster=cluster_result,
     )
 
 
 async def _parse_and_resolve(repo: str) -> ParseResult:
-    """C5 (tree-sitter, CPU-bound) → C6 (surgical Agent SDK, async)."""
+    """C4a (tree-sitter, CPU-bound) → C4b (surgical Agent SDK, async)."""
     parse_result = await run_in_threadpool(parse_codebase, repo)
     return await resolve_ambiguous(parse_result)
 
@@ -140,11 +164,11 @@ async def _patch_sync(repo_url: str, pat: str, branch: str) -> None:
     TODO:
       1. `git pull` in the existing cache (subprocess, NOT MCP).
       2. `git diff <last_sha>..HEAD --name-status -M` → FileDiff.
-      3. Load tree from DB, run C5/C6 on changed files only, mutate tree
+      3. Load tree from DB, run C4a/C4b on changed files only, mutate tree
          (drop nodes/edges from changed files, add re-parsed ones, fix
          cross-file edges), persist updated tree.
-      4. Re-run C8 on the mutated tree, re-cluster only affected Leiden
-         communities (C9), persist (C10).
+      4. Re-run C5a on the mutated tree, re-cluster only affected Leiden
+         communities (C5b), persist (C8).
       5. GitHub MCP `compare_commits` for PR/issue context on changed files.
     """
     logger.info(

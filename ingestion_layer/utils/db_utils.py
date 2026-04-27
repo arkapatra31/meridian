@@ -1,7 +1,7 @@
 """Database-side writes used by the ingestion layer.
 
 Read-side queries that drive orchestration decisions (e.g. FULL vs PATCH)
-live next to the orchestrator in `hybrid_orchestration/utils/db_utils.py` —
+live next to the orchestrator in `orchestrator/utils/db_utils.py` —
 this module only owns writes for ingestion artifacts (clones).
 """
 

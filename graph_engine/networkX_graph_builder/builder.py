@@ -1,7 +1,7 @@
-"""C8 — Graph Builder.
+"""C5a — Graph Builder.
 
-Loads a persisted parse tree (C5+C6 output) by `tree_id` and merges its
-EXTRACTED + INFERRED edges into a single `networkx.MultiDiGraph` that C9 will
+Loads a persisted parse tree (C4a+C4b output) by `tree_id` and merges its
+EXTRACTED + INFERRED edges into a single `networkx.MultiDiGraph` that C5b will
 consume for Leiden community detection.
 
 Edges that reference endpoints not present in `tree.nodes` (cross-repo
