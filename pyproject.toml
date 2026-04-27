@@ -13,4 +13,5 @@ dependencies = [
     "sqlalchemy>=2.0.0",
     "tree-sitter>=0.25.2",
     "tree-sitter-language-pack==0.13.0",
+    "networkx>=3.3",
 ]

@@ -22,9 +22,9 @@ Meridian has four layers with 12 components total, backed by a SQLite database f
 
 | Component | Technology | Role |
 |-----------|-----------|------|
-| API Gateway (C1) | FastAPI | REST endpoints, WebSocket for build progress, serves React SPA |
-| Git Client (C2a) | git CLI (subprocess) | Initial clone + pull via git protocol — zero API rate limit impact |
-| GitHub MCP Server (C2b) | GitHub MCP | Metadata and enrichment only — diffs, PRs, issues, contributors |
+| API Gateway (C1) | FastAPI | REST endpoints, WebSocket for build progress, serves React SPA. Validates requests and delegates to the orchestrator (C4) — never calls ingestion primitives directly. |
+| Git Client (C2a) | git CLI (subprocess) | Initial clone + pull via git protocol — zero API rate limit impact. Driven by the orchestrator. |
+| GitHub MCP Server (C2b) | GitHub MCP | Metadata and enrichment only — diffs, PRs, issues, contributors. Driven by the orchestrator. |
 | Repo Cache (C3) | Server filesystem | Ephemeral git clones at `/var/meridian/cache/{repo_hash}/` |
 
 **CRITICAL — Hybrid ingestion model (rate limit protection):**
@@ -76,6 +76,11 @@ Note: the cache is purely ephemeral. Graph data is persisted to the database, NO
 | Agent Reasoning (C6) | Agent SDK with tools | Pass 2: resolves ambiguous edges using grep/glob/read |
 | Tree Indexer (C7) | SQLAlchemy + SQLite | Persists the C5+C6 parse tree into the `trees` table; PATCH mutates this row in place |
 
+**Orchestrator (C4) — entry point:**
+- Lives in `hybrid_orchestration/orchestrator.py`. Single entry point invoked by the API Gateway (C1): `sync_repo(repo_url, pat, branch) -> OrchestrationResult`. The Gateway never calls C2a/C2b/C3 directly — every request flows C1 → C4 → primitives.
+- Reads `has_active_graph(repo_url, branch)` from `hybrid_orchestration/utils/db_utils.py` to pick FULL vs PATCH; the full stage chain for both paths is shown in the **Request Flow** section below.
+- The ingestion layer owns only primitives (`clone_repo`, `persist_clone`, future `pull_repo` / MCP enrichment). All routing decisions — FULL vs PATCH, which DB rows to consult, which stages to chain — live in the orchestrator. Read-side queries that drive those decisions sit next to the orchestrator (`hybrid_orchestration/utils/db_utils.py`); the ingestion layer's `db_utils.py` only owns clone-side writes.
+
 **Pass 1 — Tree-sitter (deterministic, free, fast):**
 - Parses all source files into ASTs
 - Extracts nodes: modules, classes, functions, methods
@@ -113,8 +118,8 @@ Note: the cache is purely ephemeral. Graph data is persisted to the database, NO
    - Add nodes/edges from the re-parse
    - Re-evaluate cross-file edges crossing into changed files
 9. Update the `trees` row with the mutated payload and new `last_commit_sha`.
-10. Re-cluster only affected Leiden communities (C9).
-11. Persist final clustered output to `graphs.graph_data`.
+10. C8 rebuilds the `MultiDiGraph` from the mutated tree and UPDATEs `graphs.graph_data` on the existing `graph_id` (status temporarily flips to `building`).
+11. Re-cluster only affected Leiden communities (C9), UPDATE the same row again to add fresh `community` keys, refresh `community_count`, and flip status back to `ready`.
 
 **Why no separate diff engine:** C5 and C6 are already file/ref-scoped — running them on a smaller input is the easy part. The non-trivial logic is the tree mutation, which lives in the PATCH flow (dispatcher / tree mutator) right next to where it's called. A standalone "diff engine" component would have been ceremony around `len()` calls in FULL mode and a thin wrapper in PATCH; it was removed.
 
@@ -157,6 +162,15 @@ Node types: `module`, `class`, `function`, `method`
 Edge types: `IMPORTS`, `CALLS`, `CONTAINS`, `INHERITS`, `DECORATES`, `RELATES_TO`, `DEPENDS_ON`
 Confidence levels: `EXTRACTED` (tree-sitter, high trust), `INFERRED` (agent, medium trust)
 
+**Graph Builder (C8) — contract:**
+- Entry point: `build_graph(tree_id) -> GraphBuildResult` in `graph_engine/networkX_graph_builder/`.
+- Loads the parse tree from `trees.tree_data` via `graph_engine/utils/db_utils.py`. The query is scoped on `(tree_id, status = READY)` — non-ready trees are invisible at the SQL layer, never fetched-then-rejected.
+- Produces a `networkx.MultiDiGraph`: directed (preserves CALLS/IMPORTS direction) and multi-edge (a module can both `IMPORTS` and `CALLS` into another and both survive into the graph).
+- Edge endpoints not present in `tree.nodes` (cross-repo imports, module-level globals tree-sitter doesn't extract as nodes) get a synthetic `type = "external"` node so the graph is structurally complete and no signal is lost before C9.
+- `g.graph` carries repo-level metadata: `repo`, `root`, `tree_id`, `graph_id`, `last_commit_sha`. Every edge carries `type`, `confidence`, `weight`, `metadata`.
+- Edges with an unknown `type` are dropped and counted in `edges_dropped` (logged, not raised) so a corrupted tree never silently produces a malformed graph.
+- The orchestrator immediately persists the build result via `persist_graph` in `graph_engine/utils/db_utils.py` — INSERT into `graphs` with `graph_data = {nodes, edges}`, `status = 'building'`, `community_count = 0`. The `graph_id` is returned to the client even before C9 runs, so the row is inspectable mid-pipeline.
+
 **Leiden clustering configuration:**
 - Implementation: graspologic (Microsoft)
 - Resolution parameter: 1.0 (tune per repo size)
@@ -198,6 +212,91 @@ Confidence levels: `EXTRACTED` (tree-sitter, high trust), `INFERRED` (agent, med
 - zustand (state management)
 - tailwindcss (styling)
 
+## Request Flow
+
+Every `/repos` request is dispatched the same way: the API Gateway (C1) is a thin validator that delegates to the orchestrator (C4); the orchestrator is the only component that decides what to run, in what order, and against which primitives. Ingestion (C2a/C2b/C3), processing (C5–C7), graph engine (C8–C10), and output (C11) are leaves — they take a typed input, do one job, and return.
+
+**FULL build (no active graph for `repo_url + branch`):**
+```
+Client
+  ↓
+API Gateway (C1, FastAPI)                         ← validates request, no business logic
+  ↓
+Orchestrator (C4, hybrid_orchestration/orchestrator.py)
+  │   has_active_graph(repo_url, branch) → False  ← read from Graph Store (C10)
+  ↓
+  ├─→ Git Client (C2a, subprocess clone)          ← write into Repo Cache (C3)
+  │     and persist_clone() row in repo_clones
+  ↓
+  ├─→ Tree-sitter (C5)                            ← parse all source files → ParseResult
+  ↓
+  ├─→ Agent Reasoning (C6)                        ← resolve ambiguous refs → INFERRED edges
+  ↓
+  ├─→ Tree Indexer (C7)                           ← persist parse tree to `trees` → tree_id
+  ↓
+  ├─→ Graph Builder (C8) → Graph Store (C10)      ← build MultiDiGraph, INSERT graphs row with
+  │                                                  unclustered graph_data, status='building'
+  │                                                  → returns graph_id (returned to client even
+  │                                                  before clustering finishes)
+  ↓
+  ├─→ Leiden Clustering (C9) → Graph Store (C10)  ← UPDATE the same graphs row in place: add
+  │                                                  `community` to each node, flip status='ready',
+  │                                                  set community_count, mark god/orphan nodes
+  ↓
+  └─→ sync_runs audit row written by the orchestrator
+```
+
+**PATCH update (active graph already exists):**
+```
+Client
+  ↓
+API Gateway (C1)
+  ↓
+Orchestrator (C4)
+  │   has_active_graph(repo_url, branch) → True   ← FULL/PATCH decision
+  ↓
+  ├─→ Git Client (C2a, subprocess pull)           ← refresh existing clone in C3
+  ↓
+  ├─→ GitHub MCP (C2b)                            ← compare_commits for PR/issue context (1–2 API calls)
+  ↓
+  ├─→ Tree-sitter (C5, file-scoped)               ← re-parse changed files only
+  ↓
+  ├─→ Agent Reasoning (C6, ref-scoped)            ← re-resolve refs touching changed files
+  ↓
+  ├─→ Tree Indexer (C7, mutate)                   ← drop/add nodes/edges in stored tree,
+  │                                                  update last_commit_sha
+  ↓
+  ├─→ Graph Builder (C8) → Graph Store (C10)      ← rebuild MultiDiGraph from mutated tree,
+  │                                                  UPDATE graph_data on existing graph_id
+  │                                                  (status flips back to 'building' for the
+  │                                                  duration of the re-cluster)
+  ↓
+  ├─→ Leiden Clustering (C9, partial) → C10       ← re-cluster only affected communities,
+  │                                                  UPDATE graph_data + community_count,
+  │                                                  flip status='ready'
+  ↓
+  └─→ sync_runs audit row written by the orchestrator
+```
+
+**QnA (`POST /repos/{graph_id}/query`):**
+```
+Client
+  ↓
+API Gateway (C1)
+  ↓
+Orchestrator (C4)
+  │   load graph_data from Graph Store (C10) by graph_id
+  │   BFS 2-hop subgraph from query keywords (~2k tokens)
+  ↓
+  └─→ QnA Agent (C11, ClaudeSDKClient)            ← single completion, no tools → answer
+```
+
+**Layer ownership in one line:**
+- **C1 (API Gateway)** — HTTP boundary. Validates, delegates to C4. Owns no business logic.
+- **C4 (Orchestrator)** — every routing decision. Reads `has_active_graph` (and any future build-vs-update queries) from `hybrid_orchestration/utils/db_utils.py`. Calls into ingestion primitives, processing stages, graph engine, and output.
+- **Ingestion primitives (C2a/C2b/C3)** — pure side effects on disk and remote APIs. Only DB writes are clone-side (`persist_clone` in `ingestion_layer/utils/db_utils.py`). They never decide *whether* to run; the orchestrator does.
+- **C5–C11** — each takes a typed input, does one job, returns. None of them know about HTTP, the FULL/PATCH split, or each other's existence. The orchestrator wires them together.
+
 ## Database Schema
 
 Meridian uses SQLite (`meridian.db`) for durable persistence. Five tables: `users`, `graphs`, `trees`, `repo_clones`, `sync_runs`.
@@ -226,7 +325,10 @@ CREATE TABLE graphs (
     repo_url        TEXT NOT NULL,
     branch          TEXT DEFAULT 'main',
     last_commit_sha TEXT,
-    graph_data      TEXT,               -- JSON blob: clustered NetworkX + Leiden output (C8/C9)
+    graph_data      TEXT,               -- JSON: {nodes, edges}. C8 writes the unclustered graph
+                                        -- on FULL build (status='building'); C9 mutates the
+                                        -- same row in place, adding `community` to each node
+                                        -- and flipping status to 'ready'.
     status          TEXT DEFAULT 'building', -- 'building' | 'ready' | 'error'
     node_count      INTEGER DEFAULT 0,
     edge_count      INTEGER DEFAULT 0,
@@ -300,8 +402,8 @@ CREATE TABLE sync_runs (
 - `graph_id` is returned to the user on `POST /repos`. All subsequent operations use this ID.
 - Graphs persist until an explicit `DELETE /repos/{graph_id}` is called. No TTL, no auto-eviction. Cascade deletes the tree and sync_runs rows.
 - Users can only access graphs where `user_id` matches their authenticated identity.
-- `node_count`, `edge_count`, `community_count` on `graphs` are denormalized from the *clustered* `graph_data` (post-C9). The same denormalization on `trees` (`node_count`, `edge_count`, `ambiguous_count`) reflects the parse tree (post-C6).
-- `graphs.status` tracks the build lifecycle: `building` → `ready` (or `building` → `error`). The flip to `ready` only happens after C9 finishes — before that, `graph_data` is null even if the tree is indexed.
+- `node_count` and `edge_count` on `graphs` are populated by C8 at INSERT time and reflect the unclustered C8 graph. `community_count` is set by C9 when it mutates the row (0 while status is `building`). The denormalization on `trees` (`node_count`, `edge_count`, `ambiguous_count`) reflects the parse tree (post-C6).
+- `graphs.status` tracks the build lifecycle: `building` (set by C8 INSERT) → `ready` (set by C9 UPDATE in place), or `building` → `error`. `graph_data` is non-null as soon as C8 finishes — clients can fetch the unclustered graph by `graph_id` immediately, and the row is mutated (not replaced) once C9 runs.
 - `trees.status` tracks the parse-tree lifecycle independently: `building` during C5/C6, `ready` after the indexer commits.
 
 **Relationships:**
