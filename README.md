@@ -17,50 +17,71 @@ Point Meridian at any GitHub repository and get back an interactive, queryable k
 
 ## Architecture
 
-Meridian has four layers with 12 components, backed by SQLite for durable graph and user persistence.
+Meridian is structured as **eight top-level components** (C1–C8) with sub-units lettered (e.g. C3a, C4b). C8 is shared persistence — every other component reads or writes through it.
 
 ```mermaid
 flowchart TD
-    User([User]) --> C1
+    C1["<b>C1 — API gateway</b>"]
+    C2["<b>C2 — Orchestrator</b><br/>Agent SDK · FULL vs PATCH"]
 
-    subgraph Ingestion
-        C1["C1: API Gateway (FastAPI)\nJWT auth · REST + WS · Static SPA"]
-        C1 --> decision{Graph in DB?}
-        decision -- no --> C3a["C3a: Git Client\nclone via subprocess\n→ /var/meridian/cache/"]
-        decision -- yes --> C3a_pull["C3a: Git Client\npull via subprocess"]
-        C3a_pull --> C3b["C3b: GitHub MCP\nPRs · issues · contributors"]
-    end
+    C3["<b>C3 — Ingestion</b><br/>Clone + MCP"]
+    C3a["C3a Git CLI"]
+    C3b["C3b MCP"]
 
-    subgraph Processing
-        C3a & C3b --> C2["C2: Orchestrator"]
-        C2 --> C4a["C4a: Pass 1 — Tree-sitter\nDeterministic · 25 languages\nEXTRACTED edges"]
-        C4a --> C4b["C4b: Pass 2 — Agent Tools\ngrep / glob / read\nINFERRED edges"]
-        C4a & C4b --> C4c["C4c: Tree Indexer\nPersists parse tree (FULL)\nMutates in place (PATCH)"]
-    end
+    C4["<b>C4 — Hybrid parser</b><br/>Tree-sitter + Agent"]
+    C4a["C4a TS"]
+    C4b["C4b Agent"]
+    C4c["C4c Index"]
 
-    subgraph Graph Layer
-        C4c --> C5a["C5a: Graph Builder\n(NetworkX)"]
-        C5a --> C5b["C5b: Leiden Clustering\n(graspologic)"]
-        C5b --> C8["C8: Graph Store\nSQLite · meridian.db"]
-    end
+    C5["<b>C5 — Graph engine</b><br/>NetworkX + Leiden"]
+    C5a["C5a Build"]
+    C5b["C5b Cl."]
 
-    subgraph Output
-        C8 --> C6["C6: QnA Agent\nBFS subgraph · ClaudeSDKClient"]
-        C8 --> C7["C7: React Frontend\nForce graph (WebGL)\nSemantic zoom · search"]
-    end
+    C6["<b>C6 — QnA agent</b><br/>ClaudeSDKClient"]
+    C7["<b>C7 — React frontend</b><br/>WebGL force-graph"]
+    C8["<b>C8 — SQLite persistence</b>"]
 
-    C6 & C7 --> EndUser([Technical End User])
+    C1 --> C2
+    C2 --> C3
+    C2 --> C4
+    C2 --> C5
+    C2 --> C6
 
-    classDef gitProtocol fill:#2d6a4f,color:#fff,stroke:none
-    classDef githubApi fill:#4a4e8c,color:#fff,stroke:none
-    classDef anthropicApi fill:#7b3f2e,color:#fff,stroke:none
-    classDef local fill:#3a3a3a,color:#fff,stroke:none
+    C3 --> C3a
+    C3 --> C3b
 
-    class C3a,C3a_pull gitProtocol
-    class C3b githubApi
-    class C2,C4b,C6 anthropicApi
-    class C4a,C4c,C5a,C5b,C8 local
+    C4 --> C4a
+    C4 --> C4b
+    C4 --> C4c
+
+    C5 --> C5a
+    C5 --> C5b
+
+    C3a -.-> C8
+    C4c -.-> C8
+    C5a -.-> C8
+    C5b -.-> C8
+    C6  -.-> C8
+    C7  -.-> C8
+
+    classDef gateway     fill:#1e3a5f,color:#fff,stroke:none
+    classDef orchestrate fill:#4c3a8a,color:#fff,stroke:none
+    classDef ingestion   fill:#1f5a48,color:#fff,stroke:none
+    classDef parser      fill:#5a3a2c,color:#fff,stroke:none
+    classDef engine      fill:#6b5418,color:#fff,stroke:none
+    classDef output      fill:#6a3a4a,color:#fff,stroke:none
+    classDef persistence fill:#3a3a3a,color:#fff,stroke:none
+
+    class C1 gateway
+    class C2 orchestrate
+    class C3,C3a,C3b ingestion
+    class C4,C4a,C4b,C4c parser
+    class C5,C5a,C5b engine
+    class C6,C7 output
+    class C8 persistence
 ```
+
+_Solid arrows = synchronous calls. Dashed arrows = persistence reads/writes; every component touches C8._
 
 ### Layer 1 — Ingestion
 
