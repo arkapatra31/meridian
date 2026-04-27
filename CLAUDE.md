@@ -74,7 +74,7 @@ Note: the cache is purely ephemeral. Graph data is persisted to the database, NO
 | Agent SDK Orchestrator (C4) | Claude Code Agent SDK | Coordinates entire pipeline, makes build vs update decisions |
 | Tree-sitter (C5) | py-tree-sitter + grammar .so files | Pass 1: deterministic AST extraction across 25 languages |
 | Agent Reasoning (C6) | Agent SDK with tools | Pass 2: resolves ambiguous edges using grep/glob/read |
-| Diff Engine (C7) | git diff + internal logic | Detects changed files, scopes re-processing |
+| Tree Indexer (C7) | SQLAlchemy + SQLite | Persists the C5+C6 parse tree into the `trees` table; PATCH mutates this row in place |
 
 **Pass 1 — Tree-sitter (deterministic, free, fast):**
 - Parses all source files into ASTs
@@ -95,18 +95,28 @@ Note: the cache is purely ephemeral. Graph data is persisted to the database, NO
 
 **Key design principle:** The agent's grep/glob/read tool pattern is an active ADVANTAGE over alternatives like LSP. It loads only what's needed (surgical), handles dynamic patterns LSP cannot (flexible), and costs scale with ambiguity not project size (efficient).
 
-**Diff Engine — incremental update flow:**
-1. `git pull` via subprocess (git protocol — NOT MCP, no API rate limit impact)
-2. `git diff last_commit_sha..HEAD --name-status` (local git operation)
-3. Optionally call GitHub MCP `compare_commits` for PR/issue context on changed files (1-2 API calls)
-4. Categorize: added, modified, deleted, renamed
-5. Added files: tree-sitter parse + agent resolve + add nodes/edges
-6. Modified files: tree-sitter re-parse + diff old vs new edges + patch
-7. Deleted files: remove all nodes/edges from that file
-8. Renamed files: update file references, preserve edges
-9. Re-evaluate neighbor edges (anything touching a changed node)
-10. Re-cluster only affected Leiden communities
-11. Update `last_commit_sha` in the DB
+**Tree Indexer — FULL flow:**
+1. After C5 + C6 finish, the resolver returns a `ParseResult` (the parse tree).
+2. `index_tree` serializes it (`asdict(parse_result)`) into `trees.tree_data` and inserts a row with status `ready`. Returns `tree_id`.
+3. The tree is the durable input for C8; it survives across requests and lets C9 re-cluster without re-parsing.
+
+**Tree Indexer — PATCH (incremental update) flow:**
+1. `git pull` via subprocess (git protocol — NOT MCP, no API rate limit impact).
+2. `git diff last_commit_sha..HEAD --name-status -M` (local git operation).
+3. Optionally call GitHub MCP `compare_commits` for PR/issue context on changed files (1-2 API calls).
+4. Categorize: added, modified, deleted, renamed.
+5. Load existing tree from `trees.tree_data`.
+6. Re-run C5 on `added ∪ modified` files only (tree-sitter is already file-scoped).
+7. Re-run C6 on ambiguous refs that touch changed files only (resolver is already ref-scoped).
+8. Mutate the tree:
+   - Drop nodes/edges from `deleted ∪ modified` files
+   - Add nodes/edges from the re-parse
+   - Re-evaluate cross-file edges crossing into changed files
+9. Update the `trees` row with the mutated payload and new `last_commit_sha`.
+10. Re-cluster only affected Leiden communities (C9).
+11. Persist final clustered output to `graphs.graph_data`.
+
+**Why no separate diff engine:** C5 and C6 are already file/ref-scoped — running them on a smaller input is the easy part. The non-trivial logic is the tree mutation, which lives in the PATCH flow (dispatcher / tree mutator) right next to where it's called. A standalone "diff engine" component would have been ceremony around `len()` calls in FULL mode and a thin wrapper in PATCH; it was removed.
 
 ### Layer 3: Graph
 
@@ -190,19 +200,20 @@ Confidence levels: `EXTRACTED` (tree-sitter, high trust), `INFERRED` (agent, med
 
 ## Database Schema
 
-Meridian uses SQLite (`meridian.db`) for durable persistence. Two tables: `users` and `graphs`.
+Meridian uses SQLite (`meridian.db`) for durable persistence. Five tables: `users`, `graphs`, `trees`, `repo_clones`, `sync_runs`.
 
 **Users table:**
 ```sql
 CREATE TABLE users (
-    user_id       TEXT PRIMARY KEY,   -- UUID
-    email         TEXT UNIQUE NOT NULL,
-    display_name  TEXT NOT NULL,
+    user_id         TEXT PRIMARY KEY,   -- UUID
+    email           TEXT UNIQUE NOT NULL,
+    display_name    TEXT NOT NULL,
     github_username TEXT,
-    hashed_password TEXT NOT NULL,     -- bcrypt or argon2, NEVER plaintext
-    role          TEXT DEFAULT 'member', -- 'admin' | 'member'
-    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_login_at TIMESTAMP
+    password        TEXT NOT NULL,      -- bcrypt or argon2 hash, NEVER plaintext
+    role            TEXT DEFAULT 'member', -- 'admin' | 'member'
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login_at   TIMESTAMP
 );
 ```
 
@@ -211,10 +222,11 @@ CREATE TABLE users (
 CREATE TABLE graphs (
     graph_id        TEXT PRIMARY KEY,   -- UUID
     user_id         TEXT NOT NULL,      -- FK → users.user_id
+    repo_clone_id   TEXT,               -- FK → repo_clones.repo_id (ON DELETE SET NULL)
     repo_url        TEXT NOT NULL,
     branch          TEXT DEFAULT 'main',
     last_commit_sha TEXT,
-    graph_data      TEXT,               -- JSON blob (nodes, edges, communities, god_nodes, surprises)
+    graph_data      TEXT,               -- JSON blob: clustered NetworkX + Leiden output (C8/C9)
     status          TEXT DEFAULT 'building', -- 'building' | 'ready' | 'error'
     node_count      INTEGER DEFAULT 0,
     edge_count      INTEGER DEFAULT 0,
@@ -222,18 +234,80 @@ CREATE TABLE graphs (
     error_message   TEXT,               -- populated when status = 'error'
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_synced_at  TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+```
+
+**Trees table:** parse-tree artifact (C5 + C6 output). One tree per graph; FULL inserts, PATCH mutates in place.
+```sql
+CREATE TABLE trees (
+    tree_id          TEXT PRIMARY KEY,   -- UUID
+    graph_id         TEXT UNIQUE,        -- FK → graphs.graph_id (ON DELETE CASCADE)
+    tree_data        TEXT,               -- JSON: {repo, root, files_parsed, files_skipped,
+                                         --        languages, errors, nodes, edges, ambiguous}
+    last_commit_sha  TEXT,
+    status           TEXT DEFAULT 'building',
+    node_count       INTEGER DEFAULT 0,
+    edge_count       INTEGER DEFAULT 0,
+    ambiguous_count  INTEGER DEFAULT 0,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Repo clones table:** per-user on-disk clone metadata. Rows are kept as tombstones after eviction so `last_commit_sha` survives cache deletion (re-clone can resume from that SHA).
+```sql
+CREATE TABLE repo_clones (
+    repo_id          TEXT PRIMARY KEY,   -- deterministic hash of repo_url
+    user_id          TEXT,               -- FK → users.user_id (ON DELETE CASCADE)
+    owner            TEXT NOT NULL,
+    repo             TEXT NOT NULL,
+    repo_url         TEXT NOT NULL,
+    branch           TEXT,
+    path             TEXT NOT NULL,      -- on-disk cache path
+    last_commit_sha  TEXT,
+    size_bytes       BIGINT,
+    cloned_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_accessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    evicted_at       TIMESTAMP,          -- set when cache dir is deleted; cleared on re-clone
+    UNIQUE (user_id, owner, repo, branch)
+);
+```
+
+**Sync runs table:** audit row for one build (FULL) or incremental sync (PATCH). Backs build history and the `WS /repos/{graph_id}/status` channel; the single-slot `graphs.error_message` only carries the latest.
+```sql
+CREATE TABLE sync_runs (
+    run_id            TEXT PRIMARY KEY,   -- UUID
+    graph_id          TEXT NOT NULL,      -- FK → graphs.graph_id (ON DELETE CASCADE)
+    mode              TEXT NOT NULL,      -- 'FULL' | 'PATCH'
+    status            TEXT DEFAULT 'running', -- 'running' | 'success' | 'error'
+    previous_sha      TEXT,
+    current_sha       TEXT,
+    nodes_added       INTEGER DEFAULT 0,
+    nodes_removed     INTEGER DEFAULT 0,
+    edges_added       INTEGER DEFAULT 0,
+    edges_removed     INTEGER DEFAULT 0,
+    ambiguous_added   INTEGER DEFAULT 0,
+    ambiguous_removed INTEGER DEFAULT 0,
+    error_message     TEXT,
+    started_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    finished_at       TIMESTAMP
 );
 ```
 
 **Key rules:**
 - `graph_id` is returned to the user on `POST /repos`. All subsequent operations use this ID.
-- Graphs persist until an explicit `DELETE /repos/{graph_id}` is called. No TTL, no auto-eviction.
+- Graphs persist until an explicit `DELETE /repos/{graph_id}` is called. No TTL, no auto-eviction. Cascade deletes the tree and sync_runs rows.
 - Users can only access graphs where `user_id` matches their authenticated identity.
-- `node_count`, `edge_count`, `community_count` are denormalized from `graph_data` for dashboard display without deserializing the full JSON blob.
-- `status` tracks the build lifecycle: `building` → `ready` (or `building` → `error`).
+- `node_count`, `edge_count`, `community_count` on `graphs` are denormalized from the *clustered* `graph_data` (post-C9). The same denormalization on `trees` (`node_count`, `edge_count`, `ambiguous_count`) reflects the parse tree (post-C6).
+- `graphs.status` tracks the build lifecycle: `building` → `ready` (or `building` → `error`). The flip to `ready` only happens after C9 finishes — before that, `graph_data` is null even if the tree is indexed.
+- `trees.status` tracks the parse-tree lifecycle independently: `building` during C5/C6, `ready` after the indexer commits.
 
-**Relationship:** One user owns many graphs. Each graph belongs to exactly one user.
+**Relationships:**
+- One user owns many graphs and many repo_clones.
+- One graph has exactly one tree (1:1 via `trees.graph_id UNIQUE`) and many sync_runs (1:N).
+- One repo_clone may back many graphs over time (e.g. across re-builds), but at any moment a graph points at one clone via `graphs.repo_clone_id`.
 
 ## Storage Model
 
@@ -248,12 +322,12 @@ Meridian separates ephemeral storage (cheap, evictable) from durable storage (pe
 
 **Durable — SQLite database:**
 - Location: `/var/meridian/db/meridian.db`
-- Contains: users table + graphs table (with graph_data JSON)
+- Contains: `users`, `graphs` (clustered output JSON), `trees` (parse tree JSON), `repo_clones` (clone metadata + tombstones), `sync_runs` (build history)
 - Lifecycle: persists until explicit DELETE call, survives cache eviction / container restarts
-- Size: ~1-5MB per graph record
+- Size: ~1-5MB per graph record (graph_data) + ~1-3MB per tree (tree_data) for medium repos
 - Loss impact: catastrophic — this IS the product. Back up this file.
 
-**Re-clone scenario:** When a user syncs a graph whose cache has been evicted, Meridian reads `last_commit_sha` from the DB, re-clones the repo to cache, runs `git diff` from that SHA, does an incremental patch, writes the updated graph back to DB, and optionally evicts the cache again.
+**Re-clone scenario:** When a user syncs a graph whose cache has been evicted, Meridian reads `last_commit_sha` from the surviving `repo_clones` tombstone (or `graphs` row), re-clones the repo to cache, runs `git diff` from that SHA, loads the existing tree from `trees.tree_data`, mutates it for the changed files, re-clusters, writes the updated graph back to DB, and optionally evicts the cache again.
 
 ## Deployment
 
@@ -308,7 +382,7 @@ Meridian uses JWT-based authentication.
 4. Token contains `user_id` — used to scope all DB queries to that user's graphs
 
 **Password handling:**
-- Hash with bcrypt or argon2 before storing in `users.hashed_password`
+- Hash with bcrypt or argon2 before storing in `users.password` (the column holds a hash, not plaintext, despite the column name)
 - NEVER store plaintext passwords
 - NEVER log passwords or tokens
 
@@ -329,7 +403,7 @@ Meridian uses JWT-based authentication.
 
 5. **SQLite for durable persistence, filesystem for ephemeral cache** — Graphs and users live in SQLite (`meridian.db`), keyed by UUID, persisting until explicit delete. Git clones live in the cache directory and are auto-evicted. This separates the valuable (graphs) from the disposable (clones).
 
-6. **Differential updates from day one** — Not an afterthought. The diff engine is a core component, not a bolted-on optimization.
+6. **Differential updates from day one** — Not an afterthought. The persisted parse tree (`trees` table) plus tree-mutation in the PATCH flow is how incrementality is achieved. There is no standalone "diff engine" — C5/C6 are already file/ref-scoped, so PATCH just calls them on a smaller input and mutates the stored tree in place.
 
 7. **Two confidence tiers** — Every edge is tagged EXTRACTED (tree-sitter, deterministic) or INFERRED (agent, probabilistic). This transparency is surfaced in both the QnA answers and the frontend visualization.
 
@@ -343,7 +417,7 @@ Meridian uses JWT-based authentication.
 |-----------|------|
 | git clone / git pull | Free — git protocol, no API rate limit |
 | Tree-sitter (Pass 1) | Free — local, deterministic |
-| Diff engine (C7) | Free — local git operations |
+| Tree indexer (C7) | Free — local SQLite write |
 | Graph builder + Leiden | Free — local CPU |
 | SQLite (persistence) | Free — embedded, no server process |
 | GitHub MCP (metadata) | API rate limit — 5-20 calls per sync (well within 5,000/hr budget) |
@@ -400,7 +474,7 @@ WS   /repos/{graph_id}/status  # Stream build progress
 - Do NOT allow users to access other users' graphs — every query must be scoped by user_id from JWT
 - Do NOT store plaintext passwords — always hash with bcrypt or argon2
 - Do NOT send full repo contents to the LLM — always use surgical grep/glob/read tool calls
-- Do NOT rebuild the full graph on sync — always use the diff engine for incremental updates
+- Do NOT rebuild the full graph on sync when an active graph already exists — load the existing `trees.tree_data`, mutate it for changed files, and re-cluster only affected communities
 - Do NOT make the frontend a separate deployment — it ships as a static build served by FastAPI
 - Do NOT pass unsanitized user-provided repo URLs to subprocess shell commands — always validate and sanitize to prevent command injection
 - Do NOT treat the cache directory as durable storage — it is ephemeral and evictable. The DB is the source of truth.
