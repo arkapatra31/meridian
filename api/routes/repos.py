@@ -16,7 +16,6 @@ from ..schemas import (
     SyncRequest,
     SyncResponse,
 )
-from ..schemas.sync import DiffSummaryPayload
 
 router = APIRouter(prefix="/repos", tags=["repos"])
 
@@ -84,19 +83,7 @@ async def sync(
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
     clone = result.clone
-    diff_payload: DiffSummaryPayload | None = None
-    if result.diff is not None:
-        s = result.diff.summary
-        diff_payload = DiffSummaryPayload(
-            mode=s.mode,
-            nodes_added=s.nodes_added,
-            nodes_removed=s.nodes_removed,
-            edges_added=s.edges_added,
-            edges_removed=s.edges_removed,
-            ambiguous_added=s.ambiguous_added,
-            ambiguous_removed=s.ambiguous_removed,
-            errors=s.errors,
-        )
+    tree = result.tree
 
     return SyncResponse(
         repo_url=result.repo_url,
@@ -106,7 +93,11 @@ async def sync(
         owner=clone.owner if clone else None,
         repo=clone.repo if clone else None,
         path=str(clone.path) if clone else None,
-        diff=diff_payload,
+        tree_id=result.tree_id,
+        node_count=len(tree.nodes) if tree else 0,
+        edge_count=len(tree.edges) if tree else 0,
+        ambiguous_count=len(tree.ambiguous) if tree else 0,
+        errors=list(tree.errors) if tree else [],
     )
 
 

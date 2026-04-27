@@ -3,25 +3,13 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-class DiffSummaryPayload(BaseModel):
-    """Per-build summary emitted by C7 (the diff engine)."""
-
-    mode: Literal["FULL", "PATCH"]
-    nodes_added: int = 0
-    nodes_removed: int = 0
-    edges_added: int = 0
-    edges_removed: int = 0
-    ambiguous_added: int = 0
-    ambiguous_removed: int = 0
-    errors: list[str] = Field(default_factory=list)
-
-
 class SyncResponse(BaseModel):
     """Result of `POST /repos/sync`.
 
     `mode` is the dispatch marker chosen by the ingestion layer:
-      - `FULL` — no active graph existed, repo was freshly cloned
-      - `PATCH` — active graph existed, incremental sync ran
+      - `FULL` — no active graph existed, repo was freshly cloned and the
+        parse tree was indexed.
+      - `PATCH` — active graph existed, incremental sync ran.
     """
 
     repo_url: str
@@ -36,7 +24,11 @@ class SyncResponse(BaseModel):
     path: str | None = Field(
         default=None, description="On-disk cache path of the clone (FULL only)"
     )
-    diff: DiffSummaryPayload | None = Field(
+    tree_id: str | None = Field(
         default=None,
-        description="C7 diff summary — populated for FULL mode today, PATCH later",
+        description="ID of the indexed parse tree — fetch via the trees endpoint",
     )
+    node_count: int = 0
+    edge_count: int = 0
+    ambiguous_count: int = 0
+    errors: list[str] = Field(default_factory=list)

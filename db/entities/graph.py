@@ -1,6 +1,5 @@
 from datetime import datetime
 from enum import Enum
-
 from typing import Any
 
 from sqlalchemy import JSON, TIMESTAMP, ForeignKey, Integer, String, Text, func
@@ -10,10 +9,9 @@ from .base import Base
 
 
 class GraphStatus(str, Enum):
-    ACTIVE = "Active"
-    BUILDING = "Building"
-    INACTIVE = "Inactive"
-    ERROR = "Error"
+    BUILDING = "building"
+    READY = "ready"
+    ERROR = "error"
 
 
 class Graph(Base):
@@ -22,6 +20,12 @@ class Graph(Base):
     graph_id: Mapped[str] = mapped_column(String, primary_key=True)
     user_id: Mapped[str] = mapped_column(
         String, ForeignKey("users.user_id"), nullable=False, index=True
+    )
+    repo_clone_id: Mapped[str | None] = mapped_column(
+        String,
+        ForeignKey("repo_clones.repo_id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     repo_url: Mapped[str] = mapped_column(String, nullable=False, index=True)
     branch: Mapped[str] = mapped_column(String, nullable=False, default="main")
@@ -43,5 +47,15 @@ class Graph(Base):
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp(),
     )
+    last_synced_at: Mapped[datetime | None] = mapped_column(TIMESTAMP, nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="graphs")  # noqa: F821
+    repo_clone: Mapped["RepoClone | None"] = relationship(  # noqa: F821
+        "RepoClone", back_populates="graphs", foreign_keys=[repo_clone_id]
+    )
+    sync_runs: Mapped[list["SyncRun"]] = relationship(  # noqa: F821
+        "SyncRun", back_populates="graph", cascade="all, delete-orphan"
+    )
+    tree: Mapped["Tree | None"] = relationship(  # noqa: F821
+        "Tree", back_populates="graph", uselist=False, cascade="all, delete-orphan"
+    )

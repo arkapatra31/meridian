@@ -1,10 +1,28 @@
-- C7 PATCH mode: accept file-diff input, drop deleted/renamed nodes, re-parse changed files
-- MCP incremental sync: implement `_mcp_incremental_sync` in `dispatch.py` (git pull + GitHub MCP `compare_commits`)
-- C8 graph builder: NetworkX merge of EXTRACTED + INFERRED edges, Leiden clustering via graspologic
-- Persist `DiffResult.graph` into `graphs.graph_data`; update `last_commit_sha`, node/edge/community counts, status
+## Pipeline / persistence
+- Wire graph row creation: insert `Graph` (status=building) early in dispatcher; backfill `tree.graph_id` after `index_tree`
+- Wire `sync_runs`: open RUNNING row at dispatch start, close SUCCESS/ERROR with counters at end (FULL + PATCH)
+- PATCH flow: implement `_mcp_incremental_sync` — `git pull` + `git diff --name-status -M`, load tree from DB, run C5/C6 on changed files only, mutate tree (drop nodes/edges from changed files, re-add from re-parse, fix cross-file edges), update `trees` row
+- Repo cache eviction: TTL (7d idle) + LRU disk-budget; mark `repo_clones.evicted_at`, keep row as tombstone for re-clone
+
+## Graph layer (C8 / C9)
+- C8 graph builder: NetworkX merge of EXTRACTED + INFERRED edges from `trees.tree_data`
+- C9 Leiden clustering: graspologic, populate communities + god nodes + surprises
+- Finalize graph: write clustered output to `graphs.graph_data`, populate `node_count` / `edge_count` / `community_count`, flip `status` to `ready`, stamp `last_synced_at` and `last_commit_sha`
+
+## API surface
+- `GET /trees/{tree_id}` — fetch indexed parse tree
+- `GET /repos/{graph_id}/graph` — fetch clustered graph (post-C9)
+- `DELETE /repos/{graph_id}` — explicit graph delete (cascades to trees + sync_runs)
+- `WS /repos/{graph_id}/status` — stream build progress (driven by `sync_runs` updates)
+- `POST /repos/{graph_id}/query` — C11 QnA (BFS subgraph + ClaudeSDKClient)
+
+## Auth
+- `/auth/register`, `/auth/login`, JWT middleware
+- Scope all `/repos` and `/trees` queries by `user_id` from JWT
+- Flip `tree.graph_id`, `graphs.user_id`, `repo_clones.user_id` to NOT NULL once auth lands and rows are always user-scoped
+
+## Frontend
+- C12 React frontend: react-force-graph-3d viewer, semantic zoom, served as static SPA from FastAPI
+
+## Cleanup
 - Remove `ENV=dev` fixture short-circuit in `surgical_agent/resolver.py` once C6 is exercised end-to-end
-- Auth: `/auth/register`, `/auth/login`, JWT middleware, scope all `/repos` queries by `user_id`
-- C11 QnA endpoint: `/repos/{graph_id}/query` — BFS subgraph + ClaudeSDKClient
-- C12 React frontend: react-force-graph-3d viewer, served as static SPA from FastAPI
-- WebSocket `/repos/{graph_id}/status` — stream build progress to frontend
-- Repo cache eviction: TTL (7d idle) + LRU disk-budget enforcement

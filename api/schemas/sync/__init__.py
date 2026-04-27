@@ -1,4 +1,4 @@
 from .request import SyncRequest
-from .response import DiffSummaryPayload, SyncResponse
+from .response import SyncResponse
 
-__all__ = ["DiffSummaryPayload", "SyncRequest", "SyncResponse"]
+__all__ = ["SyncRequest", "SyncResponse"]
