@@ -3,9 +3,9 @@ from dataclasses import asdict
 from fastapi import APIRouter, Header, HTTPException, status
 from fastapi.concurrency import run_in_threadpool
 
-from hybrid_orchestration.codebase_parser import parse_codebase
-from hybrid_orchestration.surgical_agent import resolve_ambiguous
-from ingestion_layer.repo_actions import sync_repo
+from hybrid_parsing.codebase_parser import parse_codebase
+from hybrid_parsing.surgical_agent import resolve_ambiguous
+from orchestrator.orchestrator import sync_repo
 from ingestion_layer.repo_cache.clone_repo import CloneError, clone_repo
 
 from ..schemas import (
@@ -94,9 +94,7 @@ async def sync(
         repo=clone.repo if clone else None,
         path=str(clone.path) if clone else None,
         tree_id=result.tree_id,
-        node_count=len(tree.nodes) if tree else 0,
-        edge_count=len(tree.edges) if tree else 0,
-        ambiguous_count=len(tree.ambiguous) if tree else 0,
+        graph_id=result.graph_id,
         errors=list(tree.errors) if tree else [],
     )
 

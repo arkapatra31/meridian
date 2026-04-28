@@ -1,4 +1,4 @@
-"""Persist a C5+C6 parse tree into the `trees` table."""
+"""Persist a C4a+C4b parse tree into the `trees` table."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from dataclasses import asdict
 
 from db.database import get_session
 from db.entities import Tree, TreeStatus
-from hybrid_orchestration.codebase_parser.models import ParseResult
+from hybrid_parsing.codebase_parser.models import ParseResult
 
 logger = logging.getLogger("meridian.tree_indexer")
 

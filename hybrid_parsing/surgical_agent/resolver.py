@@ -1,4 +1,4 @@
-"""C6 — Pass 2 surgical resolver.
+"""C4b — Pass 2 surgical resolver.
 
 Pipeline:
   1. Dedup: collapse `(file, raw, kind)` duplicates so we only resolve each

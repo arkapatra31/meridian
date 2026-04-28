@@ -1,0 +1,2814 @@
+{
+  "repo": "guardian",
+  "root": "/Users/arkapatra/Desktop/Repos/meridian/ingestion_layer/repo_cache/codebase/guardian",
+  "tree_id": "615735c6-687e-4c83-a806-7e066872825e",
+  "graph_id": null,
+  "last_commit_sha": null,
+  "node_count": 108,
+  "edge_count": 174,
+  "external_node_count": 12,
+  "edges_dropped": 0,
+  "nodes": [
+    {
+      "id": "main.py",
+      "type": "module",
+      "name": "main",
+      "file": "main.py",
+      "line_start": 1,
+      "line_end": 62,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "main.py::lifespan",
+      "type": "function",
+      "name": "lifespan",
+      "file": "main.py",
+      "line_start": 23,
+      "line_end": 25,
+      "language": "python",
+      "params": [
+        "app: FastAPI"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "main.py::health",
+      "type": "function",
+      "name": "health",
+      "file": "main.py",
+      "line_start": 60,
+      "line_end": 61,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "webhook/models.py",
+      "type": "module",
+      "name": "models",
+      "file": "webhook/models.py",
+      "line_start": 1,
+      "line_end": 39,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "webhook/models.py::PullRequestHead",
+      "type": "class",
+      "name": "PullRequestHead",
+      "file": "webhook/models.py",
+      "line_start": 4,
+      "line_end": 6,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "webhook/models.py::PullRequestBase",
+      "type": "class",
+      "name": "PullRequestBase",
+      "file": "webhook/models.py",
+      "line_start": 9,
+      "line_end": 11,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "webhook/models.py::PullRequestPayload",
+      "type": "class",
+      "name": "PullRequestPayload",
+      "file": "webhook/models.py",
+      "line_start": 14,
+      "line_end": 21,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "webhook/models.py::Repository",
+      "type": "class",
+      "name": "Repository",
+      "file": "webhook/models.py",
+      "line_start": 24,
+      "line_end": 25,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "webhook/models.py::Installation",
+      "type": "class",
+      "name": "Installation",
+      "file": "webhook/models.py",
+      "line_start": 28,
+      "line_end": 29,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "webhook/models.py::WebhookEvent",
+      "type": "class",
+      "name": "WebhookEvent",
+      "file": "webhook/models.py",
+      "line_start": 32,
+      "line_end": 38,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "webhook/github_app.py",
+      "type": "module",
+      "name": "github_app",
+      "file": "webhook/github_app.py",
+      "line_start": 1,
+      "line_end": 50,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "webhook/github_app.py::_build_jwt",
+      "type": "function",
+      "name": "_build_jwt",
+      "file": "webhook/github_app.py",
+      "line_start": 25,
+      "line_end": 33,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "webhook/github_app.py::get_installation_token",
+      "type": "function",
+      "name": "get_installation_token",
+      "file": "webhook/github_app.py",
+      "line_start": 36,
+      "line_end": 49,
+      "language": "python",
+      "params": [
+        "installation_id: int"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "webhook/handlers.py",
+      "type": "module",
+      "name": "handlers",
+      "file": "webhook/handlers.py",
+      "line_start": 1,
+      "line_end": 104,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "webhook/handlers.py::handle_pull_request",
+      "type": "function",
+      "name": "handle_pull_request",
+      "file": "webhook/handlers.py",
+      "line_start": 19,
+      "line_end": 77,
+      "language": "python",
+      "params": [
+        "event: WebhookEvent"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "webhook/handlers.py::_fetch_diff",
+      "type": "function",
+      "name": "_fetch_diff",
+      "file": "webhook/handlers.py",
+      "line_start": 80,
+      "line_end": 90,
+      "language": "python",
+      "params": [
+        "repo: str",
+        "pr_number: int",
+        "token: str"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "webhook/handlers.py::_post_review_comment",
+      "type": "function",
+      "name": "_post_review_comment",
+      "file": "webhook/handlers.py",
+      "line_start": 93,
+      "line_end": 103,
+      "language": "python",
+      "params": [
+        "repo: str",
+        "pr_number: int",
+        "body: str",
+        "token: str"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "webhook/__init__.py",
+      "type": "module",
+      "name": "__init__",
+      "file": "webhook/__init__.py",
+      "line_start": 1,
+      "line_end": 4,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "webhook/context.py",
+      "type": "module",
+      "name": "context",
+      "file": "webhook/context.py",
+      "line_start": 1,
+      "line_end": 204,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "webhook/context.py::_parse_changed_files",
+      "type": "function",
+      "name": "_parse_changed_files",
+      "file": "webhook/context.py",
+      "line_start": 33,
+      "line_end": 35,
+      "language": "python",
+      "params": [
+        "diff: str"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "webhook/context.py::_parse_changed_symbols",
+      "type": "function",
+      "name": "_parse_changed_symbols",
+      "file": "webhook/context.py",
+      "line_start": 38,
+      "line_end": 48,
+      "language": "python",
+      "params": [
+        "diff: str"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "webhook/context.py::build_review_context",
+      "type": "function",
+      "name": "build_review_context",
+      "file": "webhook/context.py",
+      "line_start": 51,
+      "line_end": 118,
+      "language": "python",
+      "params": [
+        "repo: str",
+        "pr_number: int",
+        "head_sha: str",
+        "base_ref: str",
+        "diff: str",
+        "token: str"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "webhook/context.py::_fetch_file_content",
+      "type": "function",
+      "name": "_fetch_file_content",
+      "file": "webhook/context.py",
+      "line_start": 121,
+      "line_end": 133,
+      "language": "python",
+      "params": [
+        "client: httpx.AsyncClient",
+        "repo: str",
+        "path: str",
+        "ref: str"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "webhook/context.py::_fetch_file_tree",
+      "type": "function",
+      "name": "_fetch_file_tree",
+      "file": "webhook/context.py",
+      "line_start": 136,
+      "line_end": 150,
+      "language": "python",
+      "params": [
+        "client: httpx.AsyncClient",
+        "repo: str",
+        "sha: str"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "webhook/context.py::_search_callers",
+      "type": "function",
+      "name": "_search_callers",
+      "file": "webhook/context.py",
+      "line_start": 153,
+      "line_end": 170,
+      "language": "python",
+      "params": [
+        "client: httpx.AsyncClient",
+        "repo: str",
+        "symbol: str",
+        "base_ref: str"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "webhook/context.py::format_context_for_prompt",
+      "type": "function",
+      "name": "format_context_for_prompt",
+      "file": "webhook/context.py",
+      "line_start": 173,
+      "line_end": 203,
+      "language": "python",
+      "params": [
+        "context: dict"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "webhook/router.py",
+      "type": "module",
+      "name": "router",
+      "file": "webhook/router.py",
+      "line_start": 1,
+      "line_end": 59,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "webhook/router.py::_verify_signature",
+      "type": "function",
+      "name": "_verify_signature",
+      "file": "webhook/router.py",
+      "line_start": 18,
+      "line_end": 32,
+      "language": "python",
+      "params": [
+        "payload: bytes",
+        "signature: str | None"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "webhook/router.py::github_webhook",
+      "type": "function",
+      "name": "github_webhook",
+      "file": "webhook/router.py",
+      "line_start": 36,
+      "line_end": 58,
+      "language": "python",
+      "params": [
+        "request: Request",
+        "background_tasks: BackgroundTasks",
+        "x_github_event",
+        "x_hub_signature_256"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "llm/Azure.py",
+      "type": "module",
+      "name": "Azure",
+      "file": "llm/Azure.py",
+      "line_start": 1,
+      "line_end": 24,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "llm/Azure.py::AzureLLM",
+      "type": "class",
+      "name": "AzureLLM",
+      "file": "llm/Azure.py",
+      "line_start": 9,
+      "line_end": 23,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "llm/Azure.py::AzureLLM.__new__",
+      "type": "method",
+      "name": "__new__",
+      "file": "llm/Azure.py",
+      "line_start": 13,
+      "line_end": 23,
+      "language": "python",
+      "params": [
+        "cls"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "llm/__init__.py",
+      "type": "module",
+      "name": "__init__",
+      "file": "llm/__init__.py",
+      "line_start": 1,
+      "line_end": 4,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/store.py",
+      "type": "module",
+      "name": "store",
+      "file": "audits/store.py",
+      "line_start": 1,
+      "line_end": 288,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/store.py::init_db",
+      "type": "function",
+      "name": "init_db",
+      "file": "audits/store.py",
+      "line_start": 59,
+      "line_end": 64,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/store.py::save_review",
+      "type": "function",
+      "name": "save_review",
+      "file": "audits/store.py",
+      "line_start": 67,
+      "line_end": 116,
+      "language": "python",
+      "params": [
+        "repository: str",
+        "pr_number: int",
+        "pr_title: str",
+        "results: list[dict]"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "audits/store.py::get_reviews",
+      "type": "function",
+      "name": "get_reviews",
+      "file": "audits/store.py",
+      "line_start": 119,
+      "line_end": 127,
+      "language": "python",
+      "params": [
+        "limit"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "audits/store.py::get_agent_results",
+      "type": "function",
+      "name": "get_agent_results",
+      "file": "audits/store.py",
+      "line_start": 130,
+      "line_end": 138,
+      "language": "python",
+      "params": [
+        "review_id: int"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "audits/store.py::get_findings",
+      "type": "function",
+      "name": "get_findings",
+      "file": "audits/store.py",
+      "line_start": 141,
+      "line_end": 149,
+      "language": "python",
+      "params": [
+        "agent_result_id: int"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "audits/store.py::get_full_audit",
+      "type": "function",
+      "name": "get_full_audit",
+      "file": "audits/store.py",
+      "line_start": 152,
+      "line_end": 176,
+      "language": "python",
+      "params": [
+        "review_id: int"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "audits/store.py::get_audit_summary",
+      "type": "function",
+      "name": "get_audit_summary",
+      "file": "audits/store.py",
+      "line_start": 179,
+      "line_end": 215,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/store.py::get_cost_summary",
+      "type": "function",
+      "name": "get_cost_summary",
+      "file": "audits/store.py",
+      "line_start": 218,
+      "line_end": 287,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/__init__.py",
+      "type": "module",
+      "name": "__init__",
+      "file": "audits/__init__.py",
+      "line_start": 1,
+      "line_end": 18,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/loki.py",
+      "type": "module",
+      "name": "loki",
+      "file": "audits/loki.py",
+      "line_start": 1,
+      "line_end": 56,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/loki.py::push_review_log",
+      "type": "function",
+      "name": "push_review_log",
+      "file": "audits/loki.py",
+      "line_start": 15,
+      "line_end": 55,
+      "language": "python",
+      "params": [
+        "agent_name: str",
+        "repository: str",
+        "pr_number: int",
+        "score: int",
+        "summary: str",
+        "findings: list[dict]"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "audits/router.py",
+      "type": "module",
+      "name": "router",
+      "file": "audits/router.py",
+      "line_start": 1,
+      "line_end": 58,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/router.py::list_reviews",
+      "type": "function",
+      "name": "list_reviews",
+      "file": "audits/router.py",
+      "line_start": 22,
+      "line_end": 24,
+      "language": "python",
+      "params": [
+        "limit"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "audits/router.py::review_detail",
+      "type": "function",
+      "name": "review_detail",
+      "file": "audits/router.py",
+      "line_start": 28,
+      "line_end": 33,
+      "language": "python",
+      "params": [
+        "review_id: int"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "audits/router.py::review_agents",
+      "type": "function",
+      "name": "review_agents",
+      "file": "audits/router.py",
+      "line_start": 37,
+      "line_end": 39,
+      "language": "python",
+      "params": [
+        "review_id: int"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "audits/router.py::agent_findings",
+      "type": "function",
+      "name": "agent_findings",
+      "file": "audits/router.py",
+      "line_start": 43,
+      "line_end": 45,
+      "language": "python",
+      "params": [
+        "agent_result_id: int"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "audits/router.py::audit_summary",
+      "type": "function",
+      "name": "audit_summary",
+      "file": "audits/router.py",
+      "line_start": 49,
+      "line_end": 51,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/router.py::costs",
+      "type": "function",
+      "name": "costs",
+      "file": "audits/router.py",
+      "line_start": 55,
+      "line_end": 57,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/prometheus/metrics.py",
+      "type": "module",
+      "name": "metrics",
+      "file": "audits/prometheus/metrics.py",
+      "line_start": 1,
+      "line_end": 125,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/prometheus/metrics.py::_collect_system_metrics",
+      "type": "function",
+      "name": "_collect_system_metrics",
+      "file": "audits/prometheus/metrics.py",
+      "line_start": 104,
+      "line_end": 120,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/prometheus/__init__.py",
+      "type": "module",
+      "name": "__init__",
+      "file": "audits/prometheus/__init__.py",
+      "line_start": 1,
+      "line_end": 18,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/release.py",
+      "type": "module",
+      "name": "release",
+      "file": "agents/release.py",
+      "line_start": 1,
+      "line_end": 7,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/release.py::ReleaseAgent",
+      "type": "class",
+      "name": "ReleaseAgent",
+      "file": "agents/release.py",
+      "line_start": 4,
+      "line_end": 6,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/release.py::ReleaseAgent.__init__",
+      "type": "method",
+      "name": "__init__",
+      "file": "agents/release.py",
+      "line_start": 5,
+      "line_end": 6,
+      "language": "python",
+      "params": [
+        "self"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/patterns.py",
+      "type": "module",
+      "name": "patterns",
+      "file": "agents/patterns.py",
+      "line_start": 1,
+      "line_end": 7,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/patterns.py::PatternsAgent",
+      "type": "class",
+      "name": "PatternsAgent",
+      "file": "agents/patterns.py",
+      "line_start": 4,
+      "line_end": 6,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/patterns.py::PatternsAgent.__init__",
+      "type": "method",
+      "name": "__init__",
+      "file": "agents/patterns.py",
+      "line_start": 5,
+      "line_end": 6,
+      "language": "python",
+      "params": [
+        "self"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/security.py",
+      "type": "module",
+      "name": "security",
+      "file": "agents/security.py",
+      "line_start": 1,
+      "line_end": 7,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/security.py::SecurityAgent",
+      "type": "class",
+      "name": "SecurityAgent",
+      "file": "agents/security.py",
+      "line_start": 4,
+      "line_end": 6,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/security.py::SecurityAgent.__init__",
+      "type": "method",
+      "name": "__init__",
+      "file": "agents/security.py",
+      "line_start": 5,
+      "line_end": 6,
+      "language": "python",
+      "params": [
+        "self"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/__init__.py",
+      "type": "module",
+      "name": "__init__",
+      "file": "agents/__init__.py",
+      "line_start": 1,
+      "line_end": 20,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/standards.py",
+      "type": "module",
+      "name": "standards",
+      "file": "agents/standards.py",
+      "line_start": 1,
+      "line_end": 7,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/standards.py::StandardsAgent",
+      "type": "class",
+      "name": "StandardsAgent",
+      "file": "agents/standards.py",
+      "line_start": 4,
+      "line_end": 6,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/standards.py::StandardsAgent.__init__",
+      "type": "method",
+      "name": "__init__",
+      "file": "agents/standards.py",
+      "line_start": 5,
+      "line_end": 6,
+      "language": "python",
+      "params": [
+        "self"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/functional.py",
+      "type": "module",
+      "name": "functional",
+      "file": "agents/functional.py",
+      "line_start": 1,
+      "line_end": 7,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/functional.py::FunctionalAgent",
+      "type": "class",
+      "name": "FunctionalAgent",
+      "file": "agents/functional.py",
+      "line_start": 4,
+      "line_end": 6,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/functional.py::FunctionalAgent.__init__",
+      "type": "method",
+      "name": "__init__",
+      "file": "agents/functional.py",
+      "line_start": 5,
+      "line_end": 6,
+      "language": "python",
+      "params": [
+        "self"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/orchestrator.py",
+      "type": "module",
+      "name": "orchestrator",
+      "file": "agents/orchestrator.py",
+      "line_start": 1,
+      "line_end": 201,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/orchestrator.py::ReviewOrchestrator",
+      "type": "class",
+      "name": "ReviewOrchestrator",
+      "file": "agents/orchestrator.py",
+      "line_start": 32,
+      "line_end": 200,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/orchestrator.py::ReviewOrchestrator.__init__",
+      "type": "method",
+      "name": "__init__",
+      "file": "agents/orchestrator.py",
+      "line_start": 35,
+      "line_end": 44,
+      "language": "python",
+      "params": [
+        "self"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/orchestrator.py::ReviewOrchestrator.run",
+      "type": "method",
+      "name": "run",
+      "file": "agents/orchestrator.py",
+      "line_start": 46,
+      "line_end": 90,
+      "language": "python",
+      "params": [
+        "self",
+        "diff: str",
+        "context: str",
+        "title: str",
+        "description: str",
+        "repository: str",
+        "action: str"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/orchestrator.py::ReviewOrchestrator.push_to_loki_background",
+      "type": "method",
+      "name": "push_to_loki_background",
+      "file": "agents/orchestrator.py",
+      "line_start": 93,
+      "line_end": 97,
+      "language": "python",
+      "params": [
+        "results: list[dict]",
+        "repository: str",
+        "pr_number: int"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/orchestrator.py::ReviewOrchestrator._push_to_loki",
+      "type": "method",
+      "name": "_push_to_loki",
+      "file": "agents/orchestrator.py",
+      "line_start": 100,
+      "line_end": 113,
+      "language": "python",
+      "params": [
+        "results: list[dict]",
+        "repository: str",
+        "pr_number: int"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/orchestrator.py::ReviewOrchestrator.format_review",
+      "type": "method",
+      "name": "format_review",
+      "file": "agents/orchestrator.py",
+      "line_start": 115,
+      "line_end": 161,
+      "language": "python",
+      "params": [
+        "self",
+        "results: list[dict]",
+        "pr_number: int"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/orchestrator.py::ReviewOrchestrator._donut_chart_url",
+      "type": "method",
+      "name": "_donut_chart_url",
+      "file": "agents/orchestrator.py",
+      "line_start": 164,
+      "line_end": 200,
+      "language": "python",
+      "params": [
+        "score: int"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/architecture.py",
+      "type": "module",
+      "name": "architecture",
+      "file": "agents/architecture.py",
+      "line_start": 1,
+      "line_end": 7,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/architecture.py::ArchitectureAgent",
+      "type": "class",
+      "name": "ArchitectureAgent",
+      "file": "agents/architecture.py",
+      "line_start": 4,
+      "line_end": 6,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/architecture.py::ArchitectureAgent.__init__",
+      "type": "method",
+      "name": "__init__",
+      "file": "agents/architecture.py",
+      "line_start": 5,
+      "line_end": 6,
+      "language": "python",
+      "params": [
+        "self"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/performance.py",
+      "type": "module",
+      "name": "performance",
+      "file": "agents/performance.py",
+      "line_start": 1,
+      "line_end": 7,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/performance.py::PerformanceAgent",
+      "type": "class",
+      "name": "PerformanceAgent",
+      "file": "agents/performance.py",
+      "line_start": 4,
+      "line_end": 6,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/performance.py::PerformanceAgent.__init__",
+      "type": "method",
+      "name": "__init__",
+      "file": "agents/performance.py",
+      "line_start": 5,
+      "line_end": 6,
+      "language": "python",
+      "params": [
+        "self"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/base.py",
+      "type": "module",
+      "name": "base",
+      "file": "agents/base.py",
+      "line_start": 1,
+      "line_end": 165,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/base.py::BaseReviewAgent",
+      "type": "class",
+      "name": "BaseReviewAgent",
+      "file": "agents/base.py",
+      "line_start": 25,
+      "line_end": 164,
+      "language": "python",
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "agents/base.py::BaseReviewAgent.__init__",
+      "type": "method",
+      "name": "__init__",
+      "file": "agents/base.py",
+      "line_start": 33,
+      "line_end": 38,
+      "language": "python",
+      "params": [
+        "self",
+        "skill_file: str"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/base.py::BaseReviewAgent._load_skill",
+      "type": "method",
+      "name": "_load_skill",
+      "file": "agents/base.py",
+      "line_start": 41,
+      "line_end": 44,
+      "language": "python",
+      "params": [
+        "skill_file: str"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/base.py::BaseReviewAgent.name",
+      "type": "method",
+      "name": "name",
+      "file": "agents/base.py",
+      "line_start": 47,
+      "line_end": 48,
+      "language": "python",
+      "params": [
+        "self"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/base.py::BaseReviewAgent.system_prompt",
+      "type": "method",
+      "name": "system_prompt",
+      "file": "agents/base.py",
+      "line_start": 51,
+      "line_end": 52,
+      "language": "python",
+      "params": [
+        "self"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/base.py::BaseReviewAgent._build_prompt",
+      "type": "method",
+      "name": "_build_prompt",
+      "file": "agents/base.py",
+      "line_start": 54,
+      "line_end": 68,
+      "language": "python",
+      "params": [
+        "self"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/base.py::BaseReviewAgent._parse_response",
+      "type": "method",
+      "name": "_parse_response",
+      "file": "agents/base.py",
+      "line_start": 71,
+      "line_end": 89,
+      "language": "python",
+      "params": [
+        "raw: str"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/base.py::BaseReviewAgent._record_token_usage",
+      "type": "method",
+      "name": "_record_token_usage",
+      "file": "agents/base.py",
+      "line_start": 91,
+      "line_end": 109,
+      "language": "python",
+      "params": [
+        "self",
+        "response"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/base.py::BaseReviewAgent._record_findings",
+      "type": "method",
+      "name": "_record_findings",
+      "file": "agents/base.py",
+      "line_start": 111,
+      "line_end": 115,
+      "language": "python",
+      "params": [
+        "self",
+        "findings: list[dict]"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "agents/base.py::BaseReviewAgent.review",
+      "type": "method",
+      "name": "review",
+      "file": "agents/base.py",
+      "line_start": 117,
+      "line_end": 164,
+      "language": "python",
+      "params": [
+        "self",
+        "diff: str",
+        "context: str",
+        "title: str",
+        "description: str",
+        "repository: str"
+      ],
+      "docstring": null
+    },
+    {
+      "id": "llm/__init__.py::AzureLLM",
+      "type": "external",
+      "name": "llm/__init__.py::AzureLLM",
+      "file": null,
+      "line_start": null,
+      "line_end": null,
+      "language": null,
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/prometheus/metrics.py::SYSTEM_CPU_PERCENT",
+      "type": "external",
+      "name": "audits/prometheus/metrics.py::SYSTEM_CPU_PERCENT",
+      "file": null,
+      "line_start": null,
+      "line_end": null,
+      "language": null,
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/prometheus/metrics.py::SYSTEM_MEMORY_RSS_BYTES",
+      "type": "external",
+      "name": "audits/prometheus/metrics.py::SYSTEM_MEMORY_RSS_BYTES",
+      "file": null,
+      "line_start": null,
+      "line_end": null,
+      "language": null,
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/prometheus/metrics.py::SYSTEM_MEMORY_PERCENT",
+      "type": "external",
+      "name": "audits/prometheus/metrics.py::SYSTEM_MEMORY_PERCENT",
+      "file": null,
+      "line_start": null,
+      "line_end": null,
+      "language": null,
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/prometheus/metrics.py::SYSTEM_THREADS",
+      "type": "external",
+      "name": "audits/prometheus/metrics.py::SYSTEM_THREADS",
+      "file": null,
+      "line_start": null,
+      "line_end": null,
+      "language": null,
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/prometheus/metrics.py::SYSTEM_OPEN_FDS",
+      "type": "external",
+      "name": "audits/prometheus/metrics.py::SYSTEM_OPEN_FDS",
+      "file": null,
+      "line_start": null,
+      "line_end": null,
+      "language": null,
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/prometheus/metrics.py::AGENT_TOKENS_PROMPT",
+      "type": "external",
+      "name": "audits/prometheus/metrics.py::AGENT_TOKENS_PROMPT",
+      "file": null,
+      "line_start": null,
+      "line_end": null,
+      "language": null,
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/prometheus/metrics.py::AGENT_TOKENS_COMPLETION",
+      "type": "external",
+      "name": "audits/prometheus/metrics.py::AGENT_TOKENS_COMPLETION",
+      "file": null,
+      "line_start": null,
+      "line_end": null,
+      "language": null,
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/prometheus/metrics.py::AGENT_TOKENS_TOTAL",
+      "type": "external",
+      "name": "audits/prometheus/metrics.py::AGENT_TOKENS_TOTAL",
+      "file": null,
+      "line_start": null,
+      "line_end": null,
+      "language": null,
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/prometheus/metrics.py::AGENT_FINDINGS",
+      "type": "external",
+      "name": "audits/prometheus/metrics.py::AGENT_FINDINGS",
+      "file": null,
+      "line_start": null,
+      "line_end": null,
+      "language": null,
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/prometheus/metrics.py::AGENT_INVOCATIONS",
+      "type": "external",
+      "name": "audits/prometheus/metrics.py::AGENT_INVOCATIONS",
+      "file": null,
+      "line_start": null,
+      "line_end": null,
+      "language": null,
+      "params": [],
+      "docstring": null
+    },
+    {
+      "id": "audits/prometheus/metrics.py::AGENT_DURATION",
+      "type": "external",
+      "name": "audits/prometheus/metrics.py::AGENT_DURATION",
+      "file": null,
+      "line_start": null,
+      "line_end": null,
+      "language": null,
+      "params": [],
+      "docstring": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "main.py",
+      "target": "audits/prometheus/metrics.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "main.py",
+      "target": "audits/store.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "main.py",
+      "target": "audits/router.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "main.py",
+      "target": "webhook/__init__.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "main.py",
+      "target": "main.py::lifespan",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "main.py",
+      "target": "main.py::health",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "main.py::lifespan",
+      "target": "audits/store.py::init_db",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/models.py",
+      "target": "webhook/models.py::PullRequestHead",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/models.py",
+      "target": "webhook/models.py::PullRequestBase",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/models.py",
+      "target": "webhook/models.py::PullRequestPayload",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/models.py",
+      "target": "webhook/models.py::Repository",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/models.py",
+      "target": "webhook/models.py::Installation",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/models.py",
+      "target": "webhook/models.py::WebhookEvent",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/github_app.py",
+      "target": "webhook/github_app.py::_build_jwt",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/github_app.py",
+      "target": "webhook/github_app.py::get_installation_token",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/github_app.py::get_installation_token",
+      "target": "webhook/github_app.py::_build_jwt",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/handlers.py",
+      "target": "agents/orchestrator.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/handlers.py",
+      "target": "audits/store.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/handlers.py",
+      "target": "webhook/context.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/handlers.py",
+      "target": "webhook/github_app.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/handlers.py",
+      "target": "webhook/models.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/handlers.py",
+      "target": "webhook/handlers.py::handle_pull_request",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/handlers.py",
+      "target": "webhook/handlers.py::_fetch_diff",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/handlers.py",
+      "target": "webhook/handlers.py::_post_review_comment",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/handlers.py::handle_pull_request",
+      "target": "webhook/github_app.py::get_installation_token",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/handlers.py::handle_pull_request",
+      "target": "webhook/handlers.py::_fetch_diff",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/handlers.py::handle_pull_request",
+      "target": "webhook/context.py::build_review_context",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/handlers.py::handle_pull_request",
+      "target": "webhook/context.py::format_context_for_prompt",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/handlers.py::handle_pull_request",
+      "target": "webhook/handlers.py::_post_review_comment",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/handlers.py::handle_pull_request",
+      "target": "audits/store.py::save_review",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/handlers.py::handle_pull_request",
+      "target": "agents/orchestrator.py::ReviewOrchestrator.run",
+      "type": "CALLS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "orchestrator is ReviewOrchestrator() instance at webhook/handlers.py:16, run() method defined at agents/orchestrator.py:46",
+        "raw": "orchestrator.run"
+      }
+    },
+    {
+      "source": "webhook/handlers.py::handle_pull_request",
+      "target": "agents/orchestrator.py::ReviewOrchestrator.format_review",
+      "type": "CALLS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "orchestrator is ReviewOrchestrator() instance at webhook/handlers.py:16, format_review() method defined at agents/orchestrator.py:115",
+        "raw": "orchestrator.format_review"
+      }
+    },
+    {
+      "source": "webhook/handlers.py::handle_pull_request",
+      "target": "agents/orchestrator.py::ReviewOrchestrator.push_to_loki_background",
+      "type": "CALLS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "Method defined as staticmethod on ReviewOrchestrator class",
+        "raw": "orchestrator.push_to_loki_background"
+      }
+    },
+    {
+      "source": "webhook/__init__.py",
+      "target": "webhook/router.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/context.py",
+      "target": "webhook/context.py::_parse_changed_files",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/context.py",
+      "target": "webhook/context.py::_parse_changed_symbols",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/context.py",
+      "target": "webhook/context.py::build_review_context",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/context.py",
+      "target": "webhook/context.py::_fetch_file_content",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/context.py",
+      "target": "webhook/context.py::_fetch_file_tree",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/context.py",
+      "target": "webhook/context.py::_search_callers",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/context.py",
+      "target": "webhook/context.py::format_context_for_prompt",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/context.py::build_review_context",
+      "target": "webhook/context.py::_parse_changed_files",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/context.py::build_review_context",
+      "target": "webhook/context.py::_parse_changed_symbols",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/context.py::build_review_context",
+      "target": "webhook/context.py::_fetch_file_content",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/context.py::build_review_context",
+      "target": "webhook/context.py::_fetch_file_tree",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/context.py::build_review_context",
+      "target": "webhook/context.py::_search_callers",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/router.py",
+      "target": "webhook/handlers.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/router.py",
+      "target": "webhook/models.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/router.py",
+      "target": "webhook/router.py::_verify_signature",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/router.py",
+      "target": "webhook/router.py::github_webhook",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/router.py::github_webhook",
+      "target": "webhook/router.py::_verify_signature",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "webhook/router.py::github_webhook",
+      "target": "webhook/models.py::WebhookEvent",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "llm/Azure.py",
+      "target": "llm/Azure.py::AzureLLM",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "llm/Azure.py::AzureLLM",
+      "target": "llm/Azure.py::AzureLLM.__new__",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "llm/__init__.py",
+      "target": "llm/Azure.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/store.py",
+      "target": "audits/store.py::init_db",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/store.py",
+      "target": "audits/store.py::save_review",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/store.py",
+      "target": "audits/store.py::get_reviews",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/store.py",
+      "target": "audits/store.py::get_agent_results",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/store.py",
+      "target": "audits/store.py::get_findings",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/store.py",
+      "target": "audits/store.py::get_full_audit",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/store.py",
+      "target": "audits/store.py::get_audit_summary",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/store.py",
+      "target": "audits/store.py::get_cost_summary",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/__init__.py",
+      "target": "audits/prometheus/__init__.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/loki.py",
+      "target": "audits/loki.py::push_review_log",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/router.py",
+      "target": "audits/store.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/router.py",
+      "target": "audits/router.py::list_reviews",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/router.py",
+      "target": "audits/router.py::review_detail",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/router.py",
+      "target": "audits/router.py::review_agents",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/router.py",
+      "target": "audits/router.py::agent_findings",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/router.py",
+      "target": "audits/router.py::audit_summary",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/router.py",
+      "target": "audits/router.py::costs",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/router.py::list_reviews",
+      "target": "audits/store.py::get_reviews",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/router.py::review_detail",
+      "target": "audits/store.py::get_full_audit",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/router.py::review_agents",
+      "target": "audits/store.py::get_agent_results",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/router.py::agent_findings",
+      "target": "audits/store.py::get_findings",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/router.py::audit_summary",
+      "target": "audits/store.py::get_audit_summary",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/router.py::costs",
+      "target": "audits/store.py::get_cost_summary",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/prometheus/metrics.py",
+      "target": "audits/prometheus/metrics.py::_collect_system_metrics",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "audits/prometheus/metrics.py::_collect_system_metrics",
+      "target": "audits/prometheus/metrics.py::SYSTEM_CPU_PERCENT",
+      "type": "CALLS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "Gauge instance defined at audits/prometheus/metrics.py line 71",
+        "raw": "SYSTEM_CPU_PERCENT.set"
+      }
+    },
+    {
+      "source": "audits/prometheus/metrics.py::_collect_system_metrics",
+      "target": "audits/prometheus/metrics.py::SYSTEM_MEMORY_RSS_BYTES",
+      "type": "CALLS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "Gauge instance defined at audits/prometheus/metrics.py line 76",
+        "raw": "SYSTEM_MEMORY_RSS_BYTES.set"
+      }
+    },
+    {
+      "source": "audits/prometheus/metrics.py::_collect_system_metrics",
+      "target": "audits/prometheus/metrics.py::SYSTEM_MEMORY_PERCENT",
+      "type": "CALLS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "Gauge instance defined at audits/prometheus/metrics.py line 81",
+        "raw": "SYSTEM_MEMORY_PERCENT.set"
+      }
+    },
+    {
+      "source": "audits/prometheus/metrics.py::_collect_system_metrics",
+      "target": "audits/prometheus/metrics.py::SYSTEM_THREADS",
+      "type": "CALLS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "Gauge instance defined at audits/prometheus/metrics.py line 91",
+        "raw": "SYSTEM_THREADS.set"
+      }
+    },
+    {
+      "source": "audits/prometheus/metrics.py::_collect_system_metrics",
+      "target": "audits/prometheus/metrics.py::SYSTEM_OPEN_FDS",
+      "type": "CALLS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "Gauge instance defined at audits/prometheus/metrics.py line 86",
+        "raw": "SYSTEM_OPEN_FDS.set"
+      }
+    },
+    {
+      "source": "audits/prometheus/__init__.py",
+      "target": "audits/prometheus/metrics.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/release.py",
+      "target": "agents/base.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/release.py",
+      "target": "agents/release.py::ReleaseAgent",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/release.py::ReleaseAgent",
+      "target": "agents/release.py::ReleaseAgent.__init__",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/release.py::ReleaseAgent",
+      "target": "agents/base.py::BaseReviewAgent",
+      "type": "INHERITS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "BaseReviewAgent class defined at agents/base.py:25",
+        "raw": "BaseReviewAgent"
+      }
+    },
+    {
+      "source": "agents/patterns.py",
+      "target": "agents/base.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/patterns.py",
+      "target": "agents/patterns.py::PatternsAgent",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/patterns.py::PatternsAgent",
+      "target": "agents/patterns.py::PatternsAgent.__init__",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/patterns.py::PatternsAgent",
+      "target": "agents/base.py::BaseReviewAgent",
+      "type": "INHERITS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "BaseReviewAgent class defined at agents/base.py:25, inherits by PatternsAgent",
+        "raw": "BaseReviewAgent"
+      }
+    },
+    {
+      "source": "agents/security.py",
+      "target": "agents/base.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/security.py",
+      "target": "agents/security.py::SecurityAgent",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/security.py::SecurityAgent",
+      "target": "agents/security.py::SecurityAgent.__init__",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/security.py::SecurityAgent",
+      "target": "agents/base.py::BaseReviewAgent",
+      "type": "INHERITS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "BaseReviewAgent class defined at agents/base.py:25, SecurityAgent inherits from it",
+        "raw": "BaseReviewAgent"
+      }
+    },
+    {
+      "source": "agents/__init__.py",
+      "target": "agents/architecture.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/__init__.py",
+      "target": "agents/security.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/__init__.py",
+      "target": "agents/functional.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/__init__.py",
+      "target": "agents/patterns.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/__init__.py",
+      "target": "agents/standards.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/__init__.py",
+      "target": "agents/performance.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/__init__.py",
+      "target": "agents/release.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/__init__.py",
+      "target": "agents/orchestrator.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/standards.py",
+      "target": "agents/base.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/standards.py",
+      "target": "agents/standards.py::StandardsAgent",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/standards.py::StandardsAgent",
+      "target": "agents/standards.py::StandardsAgent.__init__",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/standards.py::StandardsAgent",
+      "target": "agents/base.py::BaseReviewAgent",
+      "type": "INHERITS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "Class definition found at agents/base.py; StandardsAgent inherits from it",
+        "raw": "BaseReviewAgent"
+      }
+    },
+    {
+      "source": "agents/functional.py",
+      "target": "agents/base.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/functional.py",
+      "target": "agents/functional.py::FunctionalAgent",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/functional.py::FunctionalAgent",
+      "target": "agents/functional.py::FunctionalAgent.__init__",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/functional.py::FunctionalAgent",
+      "target": "agents/base.py::BaseReviewAgent",
+      "type": "INHERITS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "BaseReviewAgent class defined at agents/base.py:25, inherited by FunctionalAgent",
+        "raw": "BaseReviewAgent"
+      }
+    },
+    {
+      "source": "agents/orchestrator.py",
+      "target": "agents/architecture.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py",
+      "target": "agents/functional.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py",
+      "target": "agents/patterns.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py",
+      "target": "agents/performance.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py",
+      "target": "agents/release.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py",
+      "target": "agents/security.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py",
+      "target": "agents/standards.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py",
+      "target": "audits/loki.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py",
+      "target": "audits/prometheus/metrics.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py",
+      "target": "agents/orchestrator.py::ReviewOrchestrator",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py::ReviewOrchestrator",
+      "target": "agents/orchestrator.py::ReviewOrchestrator.__init__",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py::ReviewOrchestrator",
+      "target": "agents/orchestrator.py::ReviewOrchestrator.run",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py::ReviewOrchestrator",
+      "target": "agents/orchestrator.py::ReviewOrchestrator.push_to_loki_background",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py::ReviewOrchestrator",
+      "target": "agents/orchestrator.py::ReviewOrchestrator._push_to_loki",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py::ReviewOrchestrator",
+      "target": "agents/orchestrator.py::ReviewOrchestrator.format_review",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py::ReviewOrchestrator",
+      "target": "agents/orchestrator.py::ReviewOrchestrator._donut_chart_url",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py::ReviewOrchestrator.__init__",
+      "target": "agents/architecture.py::ArchitectureAgent",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py::ReviewOrchestrator.__init__",
+      "target": "agents/security.py::SecurityAgent",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py::ReviewOrchestrator.__init__",
+      "target": "agents/functional.py::FunctionalAgent",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py::ReviewOrchestrator.__init__",
+      "target": "agents/patterns.py::PatternsAgent",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py::ReviewOrchestrator.__init__",
+      "target": "agents/standards.py::StandardsAgent",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py::ReviewOrchestrator.__init__",
+      "target": "agents/performance.py::PerformanceAgent",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py::ReviewOrchestrator.__init__",
+      "target": "agents/release.py::ReleaseAgent",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py::ReviewOrchestrator.run",
+      "target": "audits/prometheus/metrics.py",
+      "type": "CALLS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "REVIEW_REQUESTS is module-level Counter defined at audits/prometheus/metrics.py:57",
+        "raw": "REVIEW_REQUESTS.labels"
+      }
+    },
+    {
+      "source": "agents/orchestrator.py::ReviewOrchestrator.run",
+      "target": "audits/prometheus/metrics.py",
+      "type": "CALLS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "REVIEW_DURATION is module-level Histogram defined in audits/prometheus/metrics.py:63",
+        "raw": "REVIEW_DURATION.observe"
+      }
+    },
+    {
+      "source": "agents/orchestrator.py::ReviewOrchestrator.run",
+      "target": "agents/base.py::BaseReviewAgent.review",
+      "type": "CALLS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "review method defined at agents/base.py:117 in BaseReviewAgent class",
+        "raw": "agent.review"
+      }
+    },
+    {
+      "source": "agents/orchestrator.py::ReviewOrchestrator.push_to_loki_background",
+      "target": "agents/orchestrator.py::ReviewOrchestrator._push_to_loki",
+      "type": "CALLS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "Method defined in same class at line 100",
+        "raw": "ReviewOrchestrator._push_to_loki"
+      }
+    },
+    {
+      "source": "agents/orchestrator.py::ReviewOrchestrator._push_to_loki",
+      "target": "audits/loki.py::push_review_log",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/orchestrator.py::ReviewOrchestrator.format_review",
+      "target": "agents/orchestrator.py::ReviewOrchestrator._donut_chart_url",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/architecture.py",
+      "target": "agents/base.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/architecture.py",
+      "target": "agents/architecture.py::ArchitectureAgent",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/architecture.py::ArchitectureAgent",
+      "target": "agents/architecture.py::ArchitectureAgent.__init__",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/architecture.py::ArchitectureAgent",
+      "target": "agents/base.py::BaseReviewAgent",
+      "type": "INHERITS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "Imported from agents.base at line 1, parent class",
+        "raw": "BaseReviewAgent"
+      }
+    },
+    {
+      "source": "agents/performance.py",
+      "target": "agents/base.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/performance.py",
+      "target": "agents/performance.py::PerformanceAgent",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/performance.py::PerformanceAgent",
+      "target": "agents/performance.py::PerformanceAgent.__init__",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/performance.py::PerformanceAgent",
+      "target": "agents/base.py::BaseReviewAgent",
+      "type": "INHERITS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "Imported from agents.base at line 1, parent class",
+        "raw": "BaseReviewAgent"
+      }
+    },
+    {
+      "source": "agents/base.py",
+      "target": "audits/prometheus/metrics.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/base.py",
+      "target": "llm/__init__.py",
+      "type": "IMPORTS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/base.py",
+      "target": "agents/base.py::BaseReviewAgent",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent",
+      "target": "agents/base.py::BaseReviewAgent.__init__",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent",
+      "target": "agents/base.py::BaseReviewAgent._load_skill",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent",
+      "target": "agents/base.py::BaseReviewAgent.name",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent",
+      "target": "agents/base.py::BaseReviewAgent.system_prompt",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent",
+      "target": "agents/base.py::BaseReviewAgent._build_prompt",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent",
+      "target": "agents/base.py::BaseReviewAgent._parse_response",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent",
+      "target": "agents/base.py::BaseReviewAgent._record_token_usage",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent",
+      "target": "agents/base.py::BaseReviewAgent._record_findings",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent",
+      "target": "agents/base.py::BaseReviewAgent.review",
+      "type": "CONTAINS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent.__init__",
+      "target": "agents/base.py::BaseReviewAgent._load_skill",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent.__init__",
+      "target": "llm/__init__.py::AzureLLM",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent.__init__",
+      "target": "agents/base.py::BaseReviewAgent._build_prompt",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent._record_token_usage",
+      "target": "audits/prometheus/metrics.py::AGENT_TOKENS_PROMPT",
+      "type": "CALLS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "Counter metric defined at audits/prometheus/metrics.py:37-41",
+        "raw": "AGENT_TOKENS_PROMPT.labels"
+      }
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent._record_token_usage",
+      "target": "audits/prometheus/metrics.py::AGENT_TOKENS_COMPLETION",
+      "type": "CALLS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "Counter metric defined at audits/prometheus/metrics.py:43",
+        "raw": "AGENT_TOKENS_COMPLETION.labels"
+      }
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent._record_token_usage",
+      "target": "audits/prometheus/metrics.py::AGENT_TOKENS_TOTAL",
+      "type": "CALLS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "Counter metric defined at audits/prometheus/metrics.py:49",
+        "raw": "AGENT_TOKENS_TOTAL.labels"
+      }
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent._record_findings",
+      "target": "audits/prometheus/metrics.py::AGENT_FINDINGS",
+      "type": "CALLS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "Counter metric defined at audits/prometheus/metrics.py:23-27",
+        "raw": "AGENT_FINDINGS.labels"
+      }
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent.review",
+      "target": "agents/base.py::BaseReviewAgent._record_token_usage",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent.review",
+      "target": "agents/base.py::BaseReviewAgent._parse_response",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent.review",
+      "target": "agents/base.py::BaseReviewAgent._record_findings",
+      "type": "CALLS",
+      "confidence": "EXTRACTED",
+      "weight": 1.0,
+      "metadata": {}
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent.review",
+      "target": "audits/prometheus/metrics.py::AGENT_INVOCATIONS",
+      "type": "CALLS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "Counter metric defined at audits/prometheus/metrics.py:10",
+        "raw": "AGENT_INVOCATIONS.labels"
+      }
+    },
+    {
+      "source": "agents/base.py::BaseReviewAgent.review",
+      "target": "audits/prometheus/metrics.py::AGENT_DURATION",
+      "type": "CALLS",
+      "confidence": "INFERRED",
+      "weight": 1.0,
+      "metadata": {
+        "reasoning": "Histogram metric defined at audits/prometheus/metrics.py:16-21",
+        "raw": "AGENT_DURATION.labels"
+      }
+    }
+  ]
+}

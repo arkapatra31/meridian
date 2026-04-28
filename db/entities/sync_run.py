@@ -13,9 +13,9 @@ class SyncMode(str, Enum):
 
 
 class SyncRunStatus(str, Enum):
-    RUNNING = "running"
-    SUCCESS = "success"
-    ERROR = "error"
+    RUNNING = "RUNNING"
+    SUCCESS = "SUCCESS"
+    ERROR = "ERROR"
 
 
 class SyncRun(Base):

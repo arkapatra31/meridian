@@ -6,10 +6,14 @@ from pydantic import BaseModel, Field
 class SyncResponse(BaseModel):
     """Result of `POST /repos/sync`.
 
-    `mode` is the dispatch marker chosen by the ingestion layer:
-      - `FULL` — no active graph existed, repo was freshly cloned and the
-        parse tree was indexed.
+    `mode` is the dispatch marker chosen by the orchestrator (C2):
+      - `FULL` — no active graph existed, repo was freshly cloned, the parse
+        tree was indexed, and C5a persisted a `graphs` row.
       - `PATCH` — active graph existed, incremental sync ran.
+
+    Counts are intentionally omitted — clients fetch the graph payload via
+    `GET /repos/{graph_id}/graph` (or the parse tree via `tree_id`) when they
+    need detail.
     """
 
     repo_url: str
@@ -28,7 +32,8 @@ class SyncResponse(BaseModel):
         default=None,
         description="ID of the indexed parse tree — fetch via the trees endpoint",
     )
-    node_count: int = 0
-    edge_count: int = 0
-    ambiguous_count: int = 0
+    graph_id: str | None = Field(
+        default=None,
+        description="ID of the persisted graph (status='BUILDING' until C5b runs)",
+    )
     errors: list[str] = Field(default_factory=list)

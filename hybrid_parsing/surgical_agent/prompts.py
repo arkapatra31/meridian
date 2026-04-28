@@ -1,4 +1,4 @@
-"""Prompts for C6 — orchestrator + researcher subagent."""
+"""Prompts for C4b — orchestrator + researcher subagent."""
 
 from __future__ import annotations
 

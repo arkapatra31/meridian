@@ -9,17 +9,17 @@ from .base import Base
 
 
 class TreeStatus(str, Enum):
-    BUILDING = "building"
-    READY = "ready"
-    ERROR = "error"
+    BUILDING = "BUILDING"
+    READY = "READY"
+    ERROR = "ERROR"
 
 
 class Tree(Base):
-    """Parse-tree artifact (C5 + C6 output) for a graph.
+    """Parse-tree artifact (C4a + C4b output) for a graph.
 
     One tree per graph. FULL builds insert the row; PATCH mutates it in
     place (drop nodes/edges from changed files, add re-parsed ones, fix
-    cross-file edges) and feeds the updated tree to C8.
+    cross-file edges) and feeds the updated tree to C5a.
     """
 
     __tablename__ = "trees"
