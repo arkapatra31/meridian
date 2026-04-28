@@ -18,6 +18,11 @@ class SyncRunStatus(str, Enum):
     ERROR = "ERROR"
 
 
+class SyncTrigger(str, Enum):
+    AUTO = "auto"
+    MANUAL_REBUILD = "manual_rebuild"
+
+
 class SyncRun(Base):
     __tablename__ = "sync_runs"
 
@@ -31,6 +36,9 @@ class SyncRun(Base):
     mode: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[str] = mapped_column(
         String, nullable=False, default=SyncRunStatus.RUNNING.value
+    )
+    triggered_by: Mapped[str] = mapped_column(
+        String, nullable=False, default=SyncTrigger.AUTO.value
     )
     previous_sha: Mapped[str | None] = mapped_column(String, nullable=True)
     current_sha: Mapped[str | None] = mapped_column(String, nullable=True)

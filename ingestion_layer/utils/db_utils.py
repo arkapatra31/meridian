@@ -50,7 +50,11 @@ def persist_clone(
             existing.repo_url = repo_url
             existing.branch = branch
             existing.path = path
-            existing.last_commit_sha = last_commit_sha
+            # Don't clobber a known SHA with None — callers refreshing
+            # other fields (e.g. clearing `evicted_at` on re-clone) may
+            # legitimately not pass one.
+            if last_commit_sha is not None:
+                existing.last_commit_sha = last_commit_sha
             existing.evicted_at = None
             logger.info("db_utils: refreshed repo_clone %s (%s/%s)", repo_id, owner, repo)
         session.commit()
