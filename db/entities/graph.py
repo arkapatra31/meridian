@@ -73,3 +73,9 @@ class Graph(Base):
     tree: Mapped["Tree | None"] = relationship(  # noqa: F821
         "Tree", back_populates="graph", uselist=False, cascade="all, delete-orphan"
     )
+    history: Mapped[list["GraphHistory"]] = relationship(  # noqa: F821
+        "GraphHistory",
+        back_populates="graph",
+        cascade="all, delete-orphan",
+        order_by="GraphHistory.version",
+    )

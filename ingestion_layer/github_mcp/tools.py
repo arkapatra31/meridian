@@ -143,6 +143,47 @@ class GithubMCPTools:
         )
         return list(result) if isinstance(result, list) else _items(result)
 
+    async def commits_between(
+        self,
+        base_sha: str,
+        head_sha: str,
+        *,
+        max_pages: int = 5,
+        per_page: int = 100,
+    ) -> list[dict]:
+        """Commits reachable from `head_sha` but not `base_sha` (newest first).
+
+        The hosted GitHub MCP server doesn't expose `compare_commits`, so we
+        page `list_commits` from HEAD and stop as soon as we hit `base_sha`.
+        Bounded by `max_pages * per_page` to avoid runaway paging on a stale
+        anchor — caller should treat a hit on the cap as "previous SHA too
+        far back; treat as full re-sync".
+        """
+        if base_sha == head_sha:
+            return []
+
+        collected: list[dict] = []
+        for page in range(1, max_pages + 1):
+            batch = await self.call_tool(
+                "list_commits",
+                owner=self.owner,
+                repo=self.repo,
+                sha=head_sha,
+                page=page,
+                perPage=per_page,
+            )
+            items = list(batch) if isinstance(batch, list) else _items(batch)
+            if not items:
+                break
+            for entry in items:
+                sha = str(entry.get("sha") or entry.get("oid") or "")
+                if sha == base_sha:
+                    return collected
+                collected.append(entry)
+            if len(items) < per_page:
+                break
+        return collected
+
     async def list_pull_requests(self, state: str = "open") -> list[dict]:
         result = await self.call_tool(
             "list_pull_requests",

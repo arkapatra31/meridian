@@ -16,7 +16,11 @@ from datetime import datetime, timezone
 from db.entities import SyncMode, SyncRunStatus
 from graph_engine.leiden_clustering import cluster_graph
 from graph_engine.networkX_graph_builder import build_graph
-from graph_engine.utils.db_utils import link_tree_to_graph, persist_graph
+from graph_engine.utils.db_utils import (
+    link_tree_to_graph,
+    persist_graph,
+    record_graph_version,
+)
 from hybrid_parsing.codebase_parser import parse_codebase
 from hybrid_parsing.codebase_parser.models import ParseResult
 from hybrid_parsing.surgical_agent import resolve_ambiguous
@@ -70,7 +74,7 @@ async def full_build(
     # the (now final) graph_id, evicting any stale tree from a prior build,
     # then drop the audit row.
     await asyncio.to_thread(link_tree_to_graph, tree_id, graph_id)
-    await asyncio.to_thread(
+    run_id = await asyncio.to_thread(
         record_sync_run,
         graph_id=graph_id,
         mode=SyncMode.FULL,
@@ -81,6 +85,7 @@ async def full_build(
         edges_added=graph_result.edge_count,
         ambiguous_added=len(tree.ambiguous),
     )
+    await asyncio.to_thread(record_graph_version, graph_id, run_id=run_id)
 
     return OrchestrationResult(
         repo_url=repo_url,

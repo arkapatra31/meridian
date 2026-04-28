@@ -44,7 +44,7 @@ async def sync_repo(
             repo_url,
             branch_name,
         )
-        await patch_sync(repo_url, pat, branch_name)
+        graph_id = await patch_sync(repo_url, pat, branch_name)
         return OrchestrationResult(
             repo_url=repo_url,
             branch=branch_name,
@@ -53,7 +53,7 @@ async def sync_repo(
             tree=None,
             tree_id=None,
             graph=None,
-            graph_id=None,
+            graph_id=graph_id,
             cluster=None,
         )
 

@@ -12,7 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from db.database import get_session
-from db.entities import Graph, GraphStatus, Tree, TreeStatus, User
+from db.entities import Graph, GraphHistory, GraphStatus, Tree, TreeStatus, User
 
 logger = logging.getLogger("meridian.graph_engine.db_utils")
 
@@ -289,6 +289,66 @@ def update_graph_with_clusters(
         graph_id,
         community_count,
     )
+
+
+def record_graph_version(
+    graph_id: str,
+    *,
+    run_id: str | None,
+) -> str | None:
+    """Snapshot the current `graphs` row into `graph_history`.
+
+    Called by the orchestrator after a successful build (FULL or PATCH-with-
+    changes). Reads the live row, computes the next monotonic `version` for
+    this graph_id, and inserts an immutable copy. Returns the new history_id,
+    or None if the graph row is missing or has no `graph_data` (defensive).
+
+    Why an explicit version int rather than relying on created_at: makes
+    "show me v3" trivial in the UI and gives a stable handle for diffing two
+    versions without timestamp ties.
+    """
+    history_id = str(uuid.uuid4())
+
+    with get_session() as session:
+        row = session.execute(
+            select(Graph).where(Graph.graph_id == graph_id)
+        ).scalar_one_or_none()
+        if row is None or row.graph_data is None:
+            logger.warning(
+                "db_utils: skipping history snapshot — graph %s missing or empty",
+                graph_id,
+            )
+            return None
+
+        next_version = (
+            session.execute(
+                select(func.coalesce(func.max(GraphHistory.version), 0)).where(
+                    GraphHistory.graph_id == graph_id
+                )
+            ).scalar_one()
+            + 1
+        )
+
+        session.add(
+            GraphHistory(
+                history_id=history_id,
+                graph_id=graph_id,
+                version=next_version,
+                run_id=run_id,
+                graph_data=row.graph_data,
+                last_commit_sha=row.last_commit_sha,
+                node_count=row.node_count,
+                edge_count=row.edge_count,
+                community_count=row.community_count,
+            )
+        )
+        session.commit()
+
+    logger.info(
+        "db_utils: snapshotted graph %s → history v%d (history_id=%s run_id=%s)",
+        graph_id, next_version, history_id, run_id,
+    )
+    return history_id
 
 
 def _ensure_system_user(session) -> None:
