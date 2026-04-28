@@ -26,6 +26,7 @@ class CloneResult:
     repo: str
     branch: str | None
     path: Path
+    last_commit_sha: str
 
 
 async def clone_repo(
@@ -92,8 +93,32 @@ async def clone_repo(
             shutil.rmtree(dest, ignore_errors=True)
         raise CloneError(f"git clone failed (exit {proc.returncode}): {msg.strip()}")
 
-    logger.info("repo_cache: cloned %s/%s to %s", owner, repo, dest)
-    return CloneResult(rid, owner, repo, branch, dest)
+    head_sha = await _read_head_sha(dest)
+
+    logger.info(
+        "repo_cache: cloned %s/%s to %s (HEAD=%s)", owner, repo, dest, head_sha[:8]
+    )
+    return CloneResult(rid, owner, repo, branch, dest, head_sha)
+
+
+async def _read_head_sha(repo_dir: Path) -> str:
+    """Run `git rev-parse HEAD` in the freshly cloned dir."""
+    proc = await asyncio.create_subprocess_exec(
+        "git",
+        "-C",
+        str(repo_dir),
+        "rev-parse",
+        "HEAD",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await proc.communicate()
+    if proc.returncode != 0:
+        raise CloneError(
+            f"git rev-parse HEAD failed (exit {proc.returncode}): "
+            f"{stderr.decode('utf-8', errors='replace').strip()}"
+        )
+    return stdout.decode("ascii").strip()
 
 
 class CloneError(RuntimeError):

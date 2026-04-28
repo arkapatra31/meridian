@@ -1,3 +1,3 @@
-from .indexer import index_tree
+from .indexer import index_tree, update_tree
 
-__all__ = ["index_tree"]
+__all__ = ["index_tree", "update_tree"]
