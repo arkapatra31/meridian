@@ -1,31 +1,25 @@
 ## Pipeline / persistence
-- Error-path `record_sync_run` — wrap `_full_build` in try/except, write `status=ERROR` row with the stack message; today only the SUCCESS path lands an audit row
-- Open a RUNNING `sync_runs` row at dispatch start (so `WS /repos/{graph_id}/status` has something to stream); flip to SUCCESS/ERROR at end instead of single end-of-pipeline insert
-- PATCH `_patch_sync`: git pull + `git diff --name-status -M`, load tree from `trees.tree_data`, run C4a/C4b on changed files only, mutate tree (drop changed-file nodes/edges, re-add from re-parse, fix cross-file edges), C5a rebuild, C5b partial re-cluster of affected communities only
+- Error-path `record_sync_run` in FULL build — `orchestrator/full_build.py` has no try/except around the pipeline; parse / C5 / DB failures propagate uncaught and never land an audit row with `status=ERROR`. Wrap `_full_build` the same way `patch_build.py` already does (lines 127–142 there are the model)
+- Open a RUNNING `sync_runs` row at dispatch start — `orchestrator/utils/db_utils.py:record_sync_run` is an end-of-pipeline insert only; `WS /repos/{graph_id}/status` has nothing to stream until the build finishes. Insert the row with `status=RUNNING` at the top of both `full_build` and `patch_build`, carry `run_id` through, flip to `SUCCESS`/`ERROR` at the end instead of inserting a new row
 - Repo cache eviction: TTL (7d idle) + LRU disk-budget; mark `repo_clones.evicted_at`, keep row as tombstone for re-clone
 
 ## API surface
-- `GET /repos` — list authenticated user's graphs (needed for frontend list view)
-- `GET /repos/{graph_id}/graph` — fetch clustered graph (blocker for frontend)
-- `GET /trees/{tree_id}` — fetch indexed parse tree
-- `DELETE /repos/{graph_id}` — explicit delete; cascades to `trees` + `sync_runs`
-- `WS /repos/{graph_id}/status` — stream build progress from `sync_runs` row updates
+- `GET /trees/{tree_id}` — no trees route exists yet
+- `WS /repos/{graph_id}/status` — stream build progress; depends on the RUNNING row being open first (see above)
 - `POST /repos/{graph_id}/query` — C6 QnA endpoint
-- Widen FastAPI exception handling — only `CloneError` / `ValueError` are mapped today; parse / Leiden / DB errors propagate as raw 500s
+- Widen FastAPI exception handling — `api/routes/repos.py` only catches `CloneError` and `ValueError`; parse, Leiden, and DB errors propagate as raw 500s
 
 ## Frontend (C7)
-- Minimum-viable v1: react-force-graph-3d viewer, fetch graph by id, click-to-detail sidebar, served as static SPA from C1
-- Defer for v1: auth flow, WebSocket build progress, QnA panel, semantic zoom — keep it small to validate the graph is actually useful
+- WebSocket build progress in RepoDashboard — connect to `WS /repos/{graph_id}/status` and drive the stage list from server events rather than a 3 s poll + elapsed-time heuristic
+- QnA panel — input + answer display, wire to `POST /repos/{graph_id}/query`
+- Semantic zoom — community super-nodes at low zoom, god nodes + boundaries at mid, all labelled nodes at high zoom
 
 ## QnA (C6)
 - BFS 2-hop subgraph from query keywords (~2k tokens), `ClaudeSDKClient` single-shot, return answer with node references
 
-## Auth
-- `/auth/register`, `/auth/login`, JWT middleware
-- Scope all `/repos` and `/trees` queries by `user_id` from JWT
-- Drop the `_SYSTEM_USER_ID` placeholder in `graph_engine/utils/db_utils.py`
-- Flip `tree.graph_id`, `graphs.user_id`, `repo_clones.user_id` to NOT NULL once every row is user-scoped
+## Auth cleanup
+- Drop `_SYSTEM_USER_ID` placeholder in `graph_engine/utils/db_utils.py` — `sync_repo` now receives a real `user_id` from the JWT (wired through `api/routes/repos.py → orchestrator → full_build/patch_build`); the system-user fixture and its ensure-system-user bootstrap can be removed
+- Flip `trees.graph_id` (`nullable=True` in `db/entities/tree.py:31`) and `repo_clones.user_id` (`nullable=True` in `db/entities/repo_clone.py:28`) to `NOT NULL` once every code path is user-scoped (blocked by the `_SYSTEM_USER_ID` removal above)
 
 ## Cleanup
-- Remove `ENV=dev` fixture short-circuit in `hybrid_parsing/surgical_agent/resolver.py` once C4b is exercised end-to-end on real repos
-- Frontend table in CLAUDE.md still says "WebGL force-graph (3d)"; pick 2D vs 3D when v1 lands and reconcile
+- Update CLAUDE.md frontend table: C7 uses `react-force-graph-3d` (3D / WebGL) — the table entry still says "not yet built" and should be updated to "built" with the 3D library noted
