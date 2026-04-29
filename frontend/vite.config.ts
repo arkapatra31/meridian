@@ -11,6 +11,7 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      '/auth':  { target: 'http://localhost:8000', changeOrigin: true },
       '/graph': { target: 'http://localhost:8000', changeOrigin: true },
       '/repos': { target: 'http://localhost:8000', changeOrigin: true },
     },

@@ -22,6 +22,19 @@ export interface GraphEdge {
   metadata: Record<string, unknown>
 }
 
+export interface GraphSummary {
+  graph_id: string
+  repo_url: string
+  branch: string
+  status: 'BUILDING' | 'READY' | 'ERROR'
+  node_count: number
+  edge_count: number
+  community_count: number
+  created_at: string
+  updated_at: string
+  last_synced_at: string | null
+}
+
 export interface GraphApiResponse {
   graph_id: string
   repo_url: string

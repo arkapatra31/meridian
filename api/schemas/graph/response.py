@@ -4,6 +4,21 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
+class GraphSummary(BaseModel):
+    """Lightweight graph metadata for `GET /repos` — no nodes/edges payload."""
+
+    graph_id: str
+    repo_url: str
+    branch: str
+    status: Literal["BUILDING", "READY", "ERROR"]
+    node_count: int
+    edge_count: int
+    community_count: int
+    created_at: datetime
+    updated_at: datetime
+    last_synced_at: datetime | None = None
+
+
 class GraphResponse(BaseModel):
     """Result of `GET /repos/{graph_id}/graph` — full graph payload for the FE.
 

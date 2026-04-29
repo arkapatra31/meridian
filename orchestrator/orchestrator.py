@@ -34,6 +34,7 @@ async def sync_repo(
     repo_url: str,
     pat: str,
     branch: str | None = None,
+    user_id: str | None = None,
 ) -> OrchestrationResult:
     """Decide FULL vs PATCH and run the matching pipeline."""
     branch_name = branch or "main"
@@ -44,7 +45,7 @@ async def sync_repo(
             repo_url,
             branch_name,
         )
-        graph_id = await patch_sync(repo_url, pat, branch_name)
+        graph_id = await patch_sync(repo_url, pat, branch_name, user_id=user_id)
         return OrchestrationResult(
             repo_url=repo_url,
             branch=branch_name,
@@ -62,4 +63,4 @@ async def sync_repo(
         repo_url,
         branch_name,
     )
-    return await full_build(repo_url, pat, branch)
+    return await full_build(repo_url, pat, branch, user_id=user_id)

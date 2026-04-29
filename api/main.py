@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 from db.database import dispose, init_db
 
 from .routes import graphs, health, repos
+from .routes.user_services import router as auth_router
 
 _STATIC_DIR = Path(__file__).parent / "static"
 
@@ -53,6 +54,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health.router)
+    app.include_router(auth_router)
     app.include_router(repos.router)
     app.include_router(graphs.router)
 

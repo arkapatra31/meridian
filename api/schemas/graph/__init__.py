@@ -1,3 +1,3 @@
-from .response import GraphResponse
+from .response import GraphResponse, GraphSummary
 
-__all__ = ["GraphResponse"]
+__all__ = ["GraphResponse", "GraphSummary"]

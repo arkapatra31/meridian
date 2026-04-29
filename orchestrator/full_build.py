@@ -37,7 +37,7 @@ logger = logging.getLogger("meridian.orchestrator.full_build")
 
 
 async def full_build(
-    repo_url: str, pat: str, branch: str | None
+    repo_url: str, pat: str, branch: str | None, user_id: str | None = None,
 ) -> OrchestrationResult:
     """Clone → C4a → C4b → C4c → C5a → C5b → link tree → audit row."""
     branch_name = branch or "main"
@@ -67,6 +67,7 @@ async def full_build(
         branch=branch_name,
         repo_clone_id=clone_result.repo_id,
         last_commit_sha=graph_result.last_commit_sha,
+        user_id=user_id,
     )
     cluster_result = await asyncio.to_thread(cluster_graph, graph_id)
 

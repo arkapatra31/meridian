@@ -53,7 +53,9 @@ from orchestrator.utils.db_utils import (
 logger = logging.getLogger("meridian.orchestrator.patch_build")
 
 
-async def patch_sync(repo_url: str, pat: str, branch: str) -> str | None:
+async def patch_sync(
+    repo_url: str, pat: str, branch: str, user_id: str | None = None
+) -> str | None:
     """Run a PATCH sync for `(repo_url, branch)`. Returns the graph_id touched."""
     started_at = datetime.now(timezone.utc)
 
@@ -129,6 +131,7 @@ async def patch_sync(repo_url: str, pat: str, branch: str) -> str | None:
             repo_url=repo_url,
             branch=branch,
             started_at=started_at,
+            user_id=user_id,
         )
     except Exception as exc:  # noqa: BLE001 — any failure must land in the audit row
         logger.exception("patch_build: rebuild failed for %s", active.graph_id)
@@ -158,6 +161,7 @@ async def _refresh_graph(
     repo_url: str,
     branch: str,
     started_at: datetime,
+    user_id: str | None = None,
 ) -> str:
     """Surgical: load tree → re-parse changed files → mutate → resolve delta
     → update tree → rebuild graph → re-cluster.
@@ -218,6 +222,7 @@ async def _refresh_graph(
         branch=branch,
         repo_clone_id=pull.repo_id,
         last_commit_sha=pull.current_sha,
+        user_id=user_id,
     )
     await asyncio.to_thread(cluster_graph, graph_id)
 
