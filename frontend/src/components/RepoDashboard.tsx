@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, FormEvent } from 'react'
 import { useAuthStore } from '@/authStore'
 import { useGraphStore } from '@/store'
+import ThemeToggle from '@/components/ThemeToggle'
 import type { GraphSummary } from '@/types'
 
 const STATUS_STYLES = {
@@ -95,7 +96,7 @@ export default function RepoDashboard() {
   const isBuilding = syncLoading || !!buildingId
 
   return (
-    <div className="relative min-h-full bg-[#0d1117] overflow-auto">
+    <div className="relative min-h-full bg-gray-50 dark:bg-[#0d1117] overflow-auto">
       {/* Background grid */}
       <div
         className="fixed inset-0 opacity-[0.025] pointer-events-none"
@@ -108,11 +109,11 @@ export default function RepoDashboard() {
       <div className="fixed bottom-1/4 right-1/4 w-[400px] h-[400px] bg-purple-600/8 rounded-full blur-[140px] pointer-events-none" />
 
       {/* Top nav */}
-      <div className="relative z-10 flex items-center justify-between px-6 h-14 border-b border-white/5 bg-[#0d1117]/80 backdrop-blur-sm sticky top-0">
+      <div className="relative z-10 flex items-center justify-between px-6 h-14 border-b border-gray-200 dark:border-white/5 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-sm sticky top-0">
         <div className="flex items-center gap-2.5">
           <MeridianLogo />
-          <span className="text-base font-bold text-white tracking-tight">Meridian</span>
-          <span className="text-gray-700 text-sm mx-0.5">/</span>
+          <span className="text-base font-bold text-gray-900 dark:text-white tracking-tight">Meridian</span>
+          <span className="text-gray-400 dark:text-gray-700 text-sm mx-0.5">/</span>
           <span className="text-sm text-gray-500">Dashboard</span>
         </div>
         <div className="flex items-center gap-4">
@@ -121,7 +122,8 @@ export default function RepoDashboard() {
               {user.display_name}
             </span>
           )}
-          <button onClick={logout} className="text-sm text-gray-600 hover:text-red-400 transition-colors">
+          <ThemeToggle />
+          <button onClick={logout} className="text-sm text-gray-500 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors">
             Sign out
           </button>
         </div>
@@ -134,7 +136,7 @@ export default function RepoDashboard() {
           <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-4">
             Sync a repository
           </h2>
-          <div className="rounded-2xl border border-white/5 bg-white/[0.03] backdrop-blur-sm p-6 flex flex-col gap-4">
+          <div className="rounded-2xl border border-gray-200 dark:border-white/5 bg-white dark:bg-white/[0.03] backdrop-blur-sm p-6 flex flex-col gap-4">
             {justReadyId && (
               <div className="flex items-center gap-2.5 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2.5">
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -154,7 +156,7 @@ export default function RepoDashboard() {
                     value={repoUrl}
                     onChange={(e) => setRepoUrl(e.target.value)}
                     placeholder="https://github.com/owner/repo"
-                    className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-indigo-500/50 transition-colors font-mono disabled:opacity-50"
+                    className="w-full rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:border-indigo-500/50 transition-colors font-mono disabled:opacity-50"
                     required
                     disabled={isBuilding}
                   />
@@ -168,7 +170,7 @@ export default function RepoDashboard() {
                     value={pat}
                     onChange={(e) => setPat(e.target.value)}
                     placeholder="ghp_xxxxxxxxxxxx"
-                    className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-indigo-500/50 transition-colors font-mono disabled:opacity-50"
+                    className="w-full rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:border-indigo-500/50 transition-colors font-mono disabled:opacity-50"
                     required
                     disabled={isBuilding}
                   />
@@ -182,7 +184,7 @@ export default function RepoDashboard() {
                     value={branch}
                     onChange={(e) => setBranch(e.target.value)}
                     placeholder="main"
-                    className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-indigo-500/50 transition-colors font-mono disabled:opacity-50"
+                    className="w-full rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:border-indigo-500/50 transition-colors font-mono disabled:opacity-50"
                     required
                     disabled={isBuilding}
                   />
@@ -218,7 +220,7 @@ export default function RepoDashboard() {
             <button
               onClick={() => token && listGraphs(token)}
               disabled={graphsLoading}
-              className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-400 transition-colors disabled:opacity-40"
+              className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-600 hover:text-gray-700 dark:hover:text-gray-400 transition-colors disabled:opacity-40"
             >
               <svg className={`w-3 h-3 ${graphsLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -236,13 +238,13 @@ export default function RepoDashboard() {
 
           {graphsLoading && graphs.length === 0 ? (
             <div className="flex items-center justify-center h-32 text-sm text-gray-600">
-              <span className="w-4 h-4 border-2 border-white/20 border-t-indigo-500 rounded-full animate-spin mr-2" />
+              <span className="w-4 h-4 border-2 border-gray-300 dark:border-white/20 border-t-indigo-500 rounded-full animate-spin mr-2" />
               Loading graphs…
             </div>
           ) : graphs.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/8 flex flex-col items-center justify-center h-36 gap-2">
-              <p className="text-sm text-gray-600">No graphs yet</p>
-              <p className="text-xs text-gray-700">Sync a repository above to get started.</p>
+            <div className="rounded-2xl border border-dashed border-gray-200 dark:border-white/8 flex flex-col items-center justify-center h-36 gap-2">
+              <p className="text-sm text-gray-500 dark:text-gray-600">No graphs yet</p>
+              <p className="text-xs text-gray-400 dark:text-gray-700">Sync a repository above to get started.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -320,7 +322,7 @@ function BuildingModal({ graphId, done, onClose }: { graphId: string; done: bool
       <div className="absolute inset-0 bg-[#060912] opacity-[0.97]" />
 
       {/* Modal */}
-      <div className="relative w-full max-w-2xl rounded-3xl border border-white/[0.07] bg-[#080d18]
+      <div className="relative w-full max-w-2xl rounded-3xl border border-gray-200 dark:border-white/[0.07] bg-white dark:bg-[#080d18]
         shadow-[0_0_0_1px_rgba(99,102,241,0.05),0_32px_80px_rgba(0,0,0,0.75)]">
 
         {/* Top accent line */}
@@ -358,7 +360,7 @@ function BuildingModal({ graphId, done, onClose }: { graphId: string; done: bool
                     </div>
                     <div>
                       <p className="text-base text-emerald-400 font-semibold">Built successfully</p>
-                      {graphId && <p className="text-xs text-gray-600 font-mono mt-0.5">{graphId.slice(0, 8)}…</p>}
+                      {graphId && <p className="text-xs text-gray-500 font-mono mt-0.5">{graphId.slice(0, 8)}…</p>}
                     </div>
                   </div>
                   <p className="text-sm text-gray-500 leading-relaxed">
@@ -384,7 +386,7 @@ function BuildingModal({ graphId, done, onClose }: { graphId: string; done: bool
                       >
                         <StageIcon type={stage.icon} state={isDone ? 'done' : isActive ? 'active' : 'pending'} />
                         <span className={`text-sm flex-1 transition-colors duration-300 ${
-                          isDone ? 'text-gray-600' : isActive ? 'text-white font-medium' : 'text-gray-700'
+                          isDone ? 'text-gray-400 dark:text-gray-600' : isActive ? 'text-gray-900 dark:text-white font-medium' : 'text-gray-500 dark:text-gray-700'
                         }`}>
                           {stage.label}
                         </span>
@@ -727,7 +729,7 @@ function StageIcon({ type, state }: { type: string; state: 'done' | 'active' | '
   if (state === 'pending') {
     return (
       <div className="w-5 h-5 shrink-0 flex items-center justify-center">
-        <div className="w-1.5 h-1.5 rounded-full bg-gray-700" />
+        <div className="w-1.5 h-1.5 rounded-full bg-gray-500 dark:bg-gray-700" />
       </div>
     )
   }
@@ -819,16 +821,16 @@ function GraphCard({ graph, onOpen, onDelete, isNew, isDeleting }: {
     <div className={`rounded-2xl border p-5 flex flex-col gap-3 transition-all duration-500 ${
       isNew
         ? 'border-emerald-500/30 bg-emerald-500/[0.04] shadow-[0_0_40px_rgba(52,211,153,0.08)]'
-        : 'border-white/5 bg-white/[0.03]'
+        : 'border-gray-200 dark:border-white/5 bg-white dark:bg-white/[0.03]'
     } ${isDeleting ? 'opacity-50 pointer-events-none' : ''}`}>
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           {repoOwner && (
-            <p className="text-xs text-gray-600 truncate font-mono mb-0.5">{repoOwner}/</p>
+            <p className="text-xs text-gray-400 dark:text-gray-600 truncate font-mono mb-0.5">{repoOwner}/</p>
           )}
-          <p className="text-sm font-semibold text-white truncate">{repoName}</p>
+          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{repoName}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1.5 ${STATUS_STYLES[graph.status]}`}>
@@ -844,10 +846,10 @@ function GraphCard({ graph, onOpen, onDelete, isNew, isDeleting }: {
               >
                 Confirm
               </button>
-              <span className="text-gray-700 text-[11px]">/</span>
+              <span className="text-gray-400 dark:text-gray-700 text-[11px]">/</span>
               <button
                 onClick={() => setConfirmDelete(false)}
-                className="text-[11px] text-gray-600 hover:text-gray-400 transition-colors"
+                className="text-[11px] text-gray-500 dark:text-gray-600 hover:text-gray-700 dark:hover:text-gray-400 transition-colors"
               >
                 Cancel
               </button>
@@ -868,8 +870,8 @@ function GraphCard({ graph, onOpen, onDelete, isNew, isDeleting }: {
       </div>
 
       {/* Branch */}
-      <p className="text-xs font-mono text-gray-600">
-        <span className="text-gray-700">branch:</span> {graph.branch}
+      <p className="text-xs font-mono text-gray-500 dark:text-gray-600">
+        <span className="text-gray-400 dark:text-gray-700">branch:</span> {graph.branch}
       </p>
 
       {/* Stats */}
@@ -880,8 +882,8 @@ function GraphCard({ graph, onOpen, onDelete, isNew, isDeleting }: {
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between pt-2 border-t border-white/5">
-        <p className="text-xs text-gray-700">Updated {updatedAgo}</p>
+      <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-white/5">
+        <p className="text-xs text-gray-400 dark:text-gray-700">Updated {updatedAgo}</p>
         {graph.status === 'READY' ? (
           <button
             onClick={() => onOpen(graph.graph_id)}

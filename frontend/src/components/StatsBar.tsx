@@ -1,5 +1,6 @@
 import { useAuthStore } from '@/authStore'
 import { useGraphStore } from '@/store'
+import ThemeToggle from '@/components/ThemeToggle'
 
 const STATUS_STYLES = {
   READY:    'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
@@ -14,15 +15,14 @@ export default function StatsBar() {
 
   const { repo_url, branch, status, node_count, edge_count, community_count } = graphData
   const repoShort = repo_url.replace(/^https?:\/\/github\.com\//, '')
-  const repoName  = repoShort.split('/').pop() ?? repoShort
 
   return (
-    <div className="absolute top-0 left-0 right-0 z-20 h-14 flex items-center gap-3 px-4 border-b border-white/5 bg-[#0d1117]/90 backdrop-blur-sm">
+    <div className="absolute top-0 left-0 right-0 z-20 h-14 flex items-center gap-3 px-4 border-b border-gray-200 dark:border-white/5 bg-white/90 dark:bg-[#0d1117]/90 backdrop-blur-sm">
 
       {/* ← Back to Dashboard */}
       <button
         onClick={reset}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/10 transition-all shrink-0"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 border border-transparent hover:border-gray-200 dark:hover:border-white/10 transition-all shrink-0"
         title="Back to dashboard"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -31,12 +31,12 @@ export default function StatsBar() {
         Dashboard
       </button>
 
-      <div className="w-px h-5 bg-white/10" />
+      <div className="w-px h-5 bg-gray-200 dark:bg-white/10" />
 
       {/* Breadcrumb: repo / branch */}
       <div className="flex items-center gap-1.5 min-w-0">
-        <span className="text-sm text-gray-400 truncate font-mono">{repoShort}</span>
-        <span className="shrink-0 px-1.5 py-0.5 rounded text-xs font-mono bg-white/5 border border-white/10 text-gray-500">
+        <span className="text-sm text-gray-600 dark:text-gray-400 truncate font-mono">{repoShort}</span>
+        <span className="shrink-0 px-1.5 py-0.5 rounded text-xs font-mono bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-500">
           {branch}
         </span>
       </div>
@@ -50,24 +50,25 @@ export default function StatsBar() {
       <div className="flex-1" />
 
       {/* Stats */}
-      <div className="hidden sm:flex items-center gap-5 text-sm text-gray-400">
+      <div className="hidden sm:flex items-center gap-5 text-sm text-gray-600 dark:text-gray-400">
         <Stat label="Nodes"     value={node_count}      color="text-indigo-400" />
         <Stat label="Edges"     value={edge_count}      color="text-purple-400" />
         <Stat label="Clusters"  value={community_count} color="text-cyan-400" />
         <Stat label="God Nodes" value={graphData.nodes.filter(n => n.is_god).length} color="text-amber-400" />
       </div>
 
-      <div className="w-px h-5 bg-white/10" />
+      <div className="w-px h-5 bg-gray-200 dark:bg-white/10" />
 
-      {/* User + sign out */}
+      {/* User + theme toggle + sign out */}
       {user && (
         <span className="hidden md:block text-sm text-gray-500 truncate max-w-[140px]" title={user.email}>
           {user.display_name}
         </span>
       )}
+      <ThemeToggle />
       <button
         onClick={logout}
-        className="text-sm text-gray-600 hover:text-red-400 transition-colors shrink-0"
+        className="text-sm text-gray-500 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors shrink-0"
         title="Sign out"
       >
         Sign out

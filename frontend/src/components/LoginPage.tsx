@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react'
 import { useAuthStore } from '@/authStore'
+import ThemeToggle from '@/components/ThemeToggle'
 
 export default function LoginPage({ onGoRegister }: { onGoRegister: () => void }) {
   const [email, setEmail]       = useState('')
@@ -12,7 +13,8 @@ export default function LoginPage({ onGoRegister }: { onGoRegister: () => void }
   }
 
   return (
-    <div className="relative flex items-center justify-center w-full h-full overflow-hidden bg-[#0d1117]">
+    <div className="relative flex items-center justify-center w-full h-full overflow-hidden bg-gray-50 dark:bg-[#0d1117]">
+      <ThemeToggle className="absolute top-4 right-4 z-10" />
       <div
         className="absolute inset-0 opacity-[0.03]"
         style={{
@@ -24,15 +26,15 @@ export default function LoginPage({ onGoRegister }: { onGoRegister: () => void }
       <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="relative z-10 w-full max-w-md px-4">
-        <div className="rounded-2xl border border-white/5 bg-white/[0.03] backdrop-blur-sm p-8 shadow-2xl">
+        <div className="rounded-2xl border border-gray-200 dark:border-white/5 bg-white dark:bg-white/[0.03] backdrop-blur-sm p-8 shadow-lg dark:shadow-none">
 
           {/* Logo */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 mb-3">
               <MeridianLogo />
-              <span className="text-2xl font-bold tracking-tight text-white">Meridian</span>
+              <span className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Meridian</span>
             </div>
-            <p className="text-sm text-gray-400">Sign in to your account</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Sign in to your account</p>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -42,7 +44,7 @@ export default function LoginPage({ onGoRegister }: { onGoRegister: () => void }
                 value={email}
                 onChange={e => { clearError(); setEmail(e.target.value) }}
                 placeholder="you@example.com"
-                className="glow-input w-full rounded-lg bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder-gray-600 outline-none transition-all focus:border-indigo-500/50"
+                className="glow-input w-full rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 outline-none transition-all focus:border-indigo-500/50"
                 disabled={loading}
                 autoFocus
               />
@@ -54,7 +56,7 @@ export default function LoginPage({ onGoRegister }: { onGoRegister: () => void }
                 value={password}
                 onChange={e => { clearError(); setPassword(e.target.value) }}
                 placeholder="••••••••"
-                className="glow-input w-full rounded-lg bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder-gray-600 outline-none transition-all focus:border-indigo-500/50"
+                className="glow-input w-full rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 outline-none transition-all focus:border-indigo-500/50"
                 disabled={loading}
               />
             </Field>
@@ -75,9 +77,9 @@ export default function LoginPage({ onGoRegister }: { onGoRegister: () => void }
           </form>
         </div>
 
-        <p className="text-center text-xs text-gray-600 mt-4">
+        <p className="text-center text-xs text-gray-500 dark:text-gray-600 mt-4">
           No account?{' '}
-          <button onClick={onGoRegister} className="text-indigo-400 hover:text-indigo-300 transition-colors">
+          <button onClick={onGoRegister} className="text-indigo-500 dark:text-indigo-400 hover:text-indigo-400 dark:hover:text-indigo-300 transition-colors">
             Create one
           </button>
         </p>
@@ -89,7 +91,7 @@ export default function LoginPage({ onGoRegister }: { onGoRegister: () => void }
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-medium text-gray-400 tracking-wide uppercase">{label}</label>
+      <label className="text-xs font-medium text-gray-600 dark:text-gray-400 tracking-wide uppercase">{label}</label>
       {children}
     </div>
   )

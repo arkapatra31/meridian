@@ -1,7 +1,8 @@
-import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
+import { useRef, useState, useEffect, useMemo } from 'react'
 import ForceGraph3D from 'react-force-graph-3d'
 import * as THREE from 'three'
 import { useGraphStore } from '@/store'
+import { useThemeStore } from '@/themeStore'
 import type { GraphNode } from '@/types'
 
 const PALETTE = [
@@ -45,8 +46,9 @@ function nodeColor(community: number) {
   return community < 0 ? '#6b7280' : PALETTE[community % PALETTE.length]
 }
 
-function makeLabelSprite(name: string, color: string) {
-  const label = name.length > 22 ? name.slice(0, 20) + '…' : name
+function makeLabelSprite(name: string | null | undefined, color: string) {
+  const safeName = name ?? ''
+  const label = safeName.length > 22 ? safeName.slice(0, 20) + '…' : safeName
   const canvas = document.createElement('canvas')
   canvas.width = 320
   canvas.height = 52
@@ -74,6 +76,7 @@ function toggleSet<T>(set: Set<T>, val: T): Set<T> {
 
 export default function GraphCanvas() {
   const { graphData, selectedNode, setSelectedNode, searchQuery, setSearchQuery } = useGraphStore()
+  const { isDark } = useThemeStore()
   const containerRef = useRef<HTMLDivElement>(null)
   const fgRef = useRef<any>(null)
   const [dims, setDims] = useState({ w: window.innerWidth, h: window.innerHeight - 56 })
@@ -106,17 +109,29 @@ export default function GraphCanvas() {
     return [...s].sort((a, b) => a - b)
   }, [nodes])
 
+  // filteredNodes: structural filters only (type/god/orphan/cluster). Search is visual-only.
   const filteredNodes = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase()
     return nodes.filter(n => {
       if (!nodeTypes.has(n.type)) return false
       if (godOnly && !n.is_god) return false
       if (orphansOnly && !n.is_orphan) return false
       if (activeClusters.size > 0 && !activeClusters.has(n.community)) return false
-      if (q && !n.name.toLowerCase().includes(q) && !n.file.toLowerCase().includes(q)) return false
       return true
     })
-  }, [nodes, nodeTypes, godOnly, orphansOnly, activeClusters, searchQuery])
+  }, [nodes, nodeTypes, godOnly, orphansOnly, activeClusters])
+
+  // matchingIds: direct name/file matches (null = no active search)
+  const matchingIds = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return null
+    const s = new Set<string>()
+    filteredNodes.forEach(n => {
+      const nameMatch = n.name != null && n.name.toLowerCase().includes(q)
+      const fileMatch = n.file != null && n.file.toLowerCase().includes(q)
+      if (nameMatch || fileMatch) s.add(n.id)
+    })
+    return s
+  }, [filteredNodes, searchQuery])
 
   const filteredNodeIds = useMemo(() => new Set(filteredNodes.map(n => n.id)), [filteredNodes])
 
@@ -128,6 +143,17 @@ export default function GraphCanvas() {
     ),
   [edges, edgeTypes, filteredNodeIds])
 
+  // visibleIds: matching nodes + their 1-hop neighbors (for nodeVisibility)
+  const visibleIds = useMemo(() => {
+    if (matchingIds === null) return null
+    const v = new Set(matchingIds)
+    filteredEdges.forEach(e => {
+      if (matchingIds.has(e.source)) v.add(e.target)
+      if (matchingIds.has(e.target)) v.add(e.source)
+    })
+    return v
+  }, [matchingIds, filteredEdges])
+
   const fgData = useMemo(() => ({
     nodes: filteredNodes.map(n => ({ ...n })),
     links: filteredEdges.map(e => ({
@@ -136,44 +162,13 @@ export default function GraphCanvas() {
     })),
   }), [filteredNodes, filteredEdges])
 
-  // Collect glow halo materials so animateGlow can update them every frame.
-  const glowMatsRef = useRef<THREE.MeshBasicMaterial[]>([])
-  useEffect(() => { glowMatsRef.current = [] }, [fgData])
-
   const nodeThreeObj = useMemo(() => (node: object) => {
     const n = node as GraphNode
     const color = nodeColor(n.community)
-
-    // Additive halo sphere slightly bigger than the default node sphere.
-    const glowMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(color),
-      transparent: true,
-      opacity: 0.6,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      side: THREE.FrontSide,
-    })
-    glowMatsRef.current.push(glowMat)
-    const halo = new THREE.Mesh(new THREE.SphereGeometry(7, 14, 14), glowMat)
-
     const group = new THREE.Group()
-    group.add(halo)
     group.add(makeLabelSprite(n.name, color))
     return group
   }, [])
-
-  // Pulse: opacity oscillates 0→max→0 with a 0.5 s full period.
-  const animateGlow = useCallback(() => {
-    const pulse = 0.5 + 0.5 * Math.sin(Date.now() * Math.PI / 250)
-    for (const mat of glowMatsRef.current) mat.opacity = pulse * 0.7
-  }, [])
-
-  useEffect(() => {
-    let rafId: number
-    const loop = () => { animateGlow(); rafId = requestAnimationFrame(loop) }
-    rafId = requestAnimationFrame(loop)
-    return () => cancelAnimationFrame(rafId)
-  }, [animateGlow])
 
   const unlockZoom = () => {
     const fg = fgRef.current
@@ -198,15 +193,22 @@ export default function GraphCanvas() {
         graphData={fgData}
         width={dims.w}
         height={dims.h}
-        backgroundColor="#0d1117"
+        backgroundColor={isDark ? '#0d1117' : '#f6f8fa'}
         nodeColor={(node) => nodeColor((node as GraphNode).community)}
         nodeLabel={(node) => (node as GraphNode).name}
         nodeOpacity={0.9}
+        nodeVisibility={(node) => visibleIds === null || visibleIds.has((node as GraphNode).id)}
         nodeThreeObjectExtend
         nodeThreeObject={nodeThreeObj}
         linkColor={(link) => EDGE_COLOR[(link as { type: string }).type] ?? '#444'}
         linkWidth={(link) => (link as { confidence: string }).confidence === 'EXTRACTED' ? 0.8 : 0.4}
         linkOpacity={0.35}
+        linkVisibility={(link) => {
+          if (matchingIds === null) return true
+          const src = typeof link.source === 'object' ? (link.source as any).id : link.source as string
+          const tgt = typeof link.target === 'object' ? (link.target as any).id : link.target as string
+          return matchingIds.has(src) || matchingIds.has(tgt)
+        }}
         linkDirectionalArrowLength={3}
         linkDirectionalArrowRelPos={1}
         onEngineStop={unlockZoom}
@@ -236,26 +238,33 @@ export default function GraphCanvas() {
       <div className="absolute top-3 left-3 z-20 flex flex-col gap-2">
         <div className="flex items-center gap-2">
           {/* Search input */}
-          <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"
-              fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-            </svg>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search nodes…"
-              className="w-56 pl-9 pr-8 py-2 text-sm rounded-lg bg-[#161b22]/90 backdrop-blur-sm border border-white/10 text-gray-300 placeholder-gray-600 outline-none focus:border-indigo-500/40 transition-colors"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
-                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              </button>
+          <div className="flex flex-col gap-1">
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search nodes…"
+                className="w-56 pl-9 pr-8 py-2 text-sm rounded-lg bg-white/90 dark:bg-[#161b22]/90 backdrop-blur-sm border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:border-indigo-500/40 transition-colors"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            {matchingIds !== null && (
+              <span className="text-xs text-indigo-400/80 pl-1">
+                {matchingIds.size} match{matchingIds.size !== 1 ? 'es' : ''}
+              </span>
             )}
           </div>
 
@@ -267,7 +276,7 @@ export default function GraphCanvas() {
                 ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300'
                 : isFiltered
                   ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
-                  : 'bg-[#161b22]/90 border-white/10 text-gray-400 hover:text-gray-200 hover:border-white/20'
+                  : 'bg-white/90 dark:bg-[#161b22]/90 border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-white/20'
               }`}
           >
             <FilterIcon />
@@ -282,7 +291,7 @@ export default function GraphCanvas() {
 
         {/* Filter panel */}
         {filtersOpen && (
-          <div className="w-64 rounded-xl border border-white/8 bg-[#0d1117]/95 backdrop-blur-md shadow-2xl p-3 flex flex-col gap-3">
+          <div className="w-64 rounded-xl border border-gray-200 dark:border-white/8 bg-white dark:bg-[#0d1117]/95 backdrop-blur-md shadow-2xl p-3 flex flex-col gap-3">
 
             {/* Quick toggles */}
             <FilterSection label="Quick Filters">
@@ -312,7 +321,7 @@ export default function GraphCanvas() {
                     className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-all
                       ${nodeTypes.has(t)
                         ? NODE_TYPE_STYLE[t]?.badge ?? 'bg-gray-500/15 text-gray-400 border-gray-500/30'
-                        : 'bg-transparent text-gray-600 border-gray-700/50 line-through'
+                        : 'bg-transparent text-gray-400 dark:text-gray-600 border-gray-300 dark:border-gray-700/50 line-through'
                       }`}
                   >
                     {t}
@@ -331,7 +340,7 @@ export default function GraphCanvas() {
                     className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-all
                       ${edgeTypes.has(t)
                         ? EDGE_TYPE_STYLE[t] ?? 'bg-gray-500/15 text-gray-400 border-gray-500/30'
-                        : 'bg-transparent text-gray-600 border-gray-700/50 line-through'
+                        : 'bg-transparent text-gray-400 dark:text-gray-600 border-gray-300 dark:border-gray-700/50 line-through'
                       }`}
                   >
                     {t}
@@ -376,14 +385,14 @@ export default function GraphCanvas() {
                   setEdgeTypes(new Set(ALL_EDGE_TYPES))
                   setActiveClusters(new Set())
                 }}
-                className="text-xs text-gray-500 hover:text-gray-300 transition-colors text-left"
+                className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors text-left"
               >
                 ↺ Reset all filters
               </button>
             )}
 
             {/* Live count */}
-            <div className="text-xs text-gray-600 border-t border-white/5 pt-2">
+            <div className="text-xs text-gray-500 dark:text-gray-600 border-t border-gray-200 dark:border-white/5 pt-2">
               Showing {filteredNodes.length.toLocaleString()} nodes · {filteredEdges.length.toLocaleString()} edges
             </div>
           </div>
@@ -396,7 +405,7 @@ export default function GraphCanvas() {
 function FilterSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-xs font-semibold tracking-widest text-gray-600 uppercase">{label}</span>
+      <span className="text-xs font-semibold tracking-widest text-gray-400 dark:text-gray-600 uppercase">{label}</span>
       {children}
     </div>
   )
@@ -409,7 +418,7 @@ function QuickToggle({ active, onClick, label, activeClass }: {
     <button
       onClick={onClick}
       className={`px-2.5 py-0.5 rounded-full text-xs font-medium border transition-all
-        ${active ? activeClass : 'bg-transparent text-gray-500 border-gray-700/50 hover:text-gray-300'}`}
+        ${active ? activeClass : 'bg-transparent text-gray-500 dark:text-gray-500 border-gray-300 dark:border-gray-700/50 hover:text-gray-700 dark:hover:text-gray-300'}`}
     >
       {label}
     </button>
