@@ -1,17 +1,13 @@
-"""Pass 1.5 — Symbol-index workload reducer.
+"""Pass 1.5 — Symbol-index workload reducer (entry point).
 
-Sits between C4a (tree-sitter) and C4b (agent resolver). Classifies every
-ambiguous ref into one of three buckets — no LLM, no filesystem access:
+Sits between C4a (tree-sitter) and C4b (agent resolver). Detects the source
+language of each AmbiguousRef and routes it to the appropriate language-specific
+reducer. Unrecognised languages fall back to generic reduction.
 
-  0 node-index matches  → drop  (external / stdlib symbol, nothing to link)
-  1 match               → resolve in Python (INFERRED edge, zero API cost)
-  multiple matches      → same-package heuristic for import/inherits/decorator;
-                          call refs with collisions pass straight to C4b
-
-Typical outcome for Java Spring repos:
-  ~88% dropped  (framework imports that slipped past Pass 1 prefix filters)
-  ~10% resolved (unique cross-file class / interface references)
-  ~2%  passed   (genuine naming collisions — methods named save/find/etc.)
+Typical outcome for a mixed repo:
+  ~88% dropped  (external/stdlib symbols with no project match)
+  ~10% resolved (unique cross-file refs resolved from the symbol index)
+  ~2%  passed   (genuine collisions deferred to C4b)
 """
 
 from __future__ import annotations
@@ -20,8 +16,23 @@ import logging
 from collections import defaultdict
 
 from ..codebase_parser.models import AmbiguousRef, Edge, ParseResult
+from .reducer_java import reduce_java_refs
+from .reducer_javascript import reduce_javascript_refs
+from .reducer_python import reduce_python_refs
 
 logger = logging.getLogger("meridian.workload_reducer")
+
+# Maps file extension → language key
+_EXT_TO_LANG: dict[str, str] = {
+    ".py":  "python",
+    ".java": "java",
+    ".js":  "javascript",
+    ".jsx": "javascript",
+    ".ts":  "javascript",
+    ".tsx": "javascript",
+    ".mjs": "javascript",
+    ".cjs": "javascript",
+}
 
 _KIND_TO_EDGE: dict[str, str] = {
     "import": "IMPORTS",
@@ -32,34 +43,89 @@ _KIND_TO_EDGE: dict[str, str] = {
 
 
 def reduce_workload(parse_result: ParseResult) -> ParseResult:
-    """Resolve unambiguous refs in Python; drop externals; pass collisions to C4b.
+    """Route each AmbiguousRef to its language reducer; mutate parse_result in place.
 
-    Mutates `parse_result` in place (same contract as `resolve_ambiguous`):
-      - Appends INFERRED edges for resolved refs.
-      - Replaces `ambiguous` with only the refs that still need agent reasoning.
+    - Appends INFERRED edges for resolved refs.
+    - Replaces `ambiguous` with only the refs that still need agent reasoning.
     """
     if not parse_result.ambiguous:
         return parse_result
 
     name_index = _build_name_index(parse_result)
+    total_before = len(parse_result.ambiguous)
 
+    # Partition refs by source language
+    by_lang: dict[str, list[AmbiguousRef]] = defaultdict(list)
+    for ref in parse_result.ambiguous:
+        ext = "." + ref.file.rsplit(".", 1)[-1] if "." in ref.file else ""
+        by_lang[_EXT_TO_LANG.get(ext, "generic")].append(ref)
+
+    all_edges: list[Edge] = []
+    all_remaining: list[AmbiguousRef] = []
+
+    # Language-specific reducers
+    if by_lang["python"]:
+        edges, rem = reduce_python_refs(by_lang["python"], name_index)
+        all_edges.extend(edges)
+        all_remaining.extend(rem)
+
+    if by_lang["java"]:
+        edges, rem = reduce_java_refs(by_lang["java"], name_index)
+        all_edges.extend(edges)
+        all_remaining.extend(rem)
+
+    if by_lang["javascript"]:
+        edges, rem = reduce_javascript_refs(by_lang["javascript"], name_index)
+        all_edges.extend(edges)
+        all_remaining.extend(rem)
+
+    # Generic fallback for all other languages
+    if by_lang["generic"]:
+        edges, rem = _reduce_generic(by_lang["generic"], name_index)
+        all_edges.extend(edges)
+        all_remaining.extend(rem)
+
+    parse_result.edges.extend(all_edges)
+    parse_result.ambiguous = all_remaining
+
+    resolved = len(all_edges)
+    passed = len(all_remaining)
+    dropped = total_before - resolved - passed
+    logger.info(
+        "workload_reducer: %d total — dropped %d (%.0f%%)  resolved %d (%.0f%%)  passed_to_agent %d (%.0f%%)",
+        total_before,
+        dropped, 100 * dropped / max(1, total_before),
+        resolved, 100 * resolved / max(1, total_before),
+        passed, 100 * passed / max(1, total_before),
+    )
+    return parse_result
+
+
+# ---------------------------------------------------------------------------
+# Generic fallback (languages without a dedicated reducer)
+# ---------------------------------------------------------------------------
+
+def _reduce_generic(
+    refs: list[AmbiguousRef],
+    name_index: dict[str, list[str]],
+) -> tuple[list[Edge], list[AmbiguousRef]]:
+    """Best-effort reduction for languages without a dedicated reducer."""
     new_edges: list[Edge] = []
     remaining: list[AmbiguousRef] = []
-    dropped = resolved = passed = 0
 
-    for ref in parse_result.ambiguous:
-        candidates = _find_candidates(ref, name_index)
+    for ref in refs:
+        name = _extract_generic_symbol_name(ref)
+        if not name:
+            continue
 
+        candidates = name_index.get(name, [])
         if not candidates:
-            dropped += 1
             continue
 
         target: str | None = None
-
         if len(candidates) == 1:
             target = candidates[0]
         elif ref.kind in ("import", "inherits", "decorator"):
-            # For non-call kinds, a same-package match is strong enough signal.
             target = _same_package_heuristic(ref.source, candidates)
 
         if target is not None:
@@ -71,39 +137,28 @@ def reduce_workload(parse_result: ParseResult) -> ParseResult:
                         target=target,
                         type=edge_type,
                         confidence="INFERRED",
-                        metadata={
-                            "reasoning": (
-                                "symbol_index: unique match"
-                                if len(candidates) == 1
-                                else "symbol_index: same-package heuristic"
-                            ),
-                            "raw": ref.raw,
-                        },
+                        metadata={"reasoning": "symbol_index: unique match", "raw": ref.raw},
                     )
                 )
-                resolved += 1
-            else:
-                dropped += 1
         else:
             remaining.append(ref)
-            passed += 1
 
-    parse_result.edges.extend(new_edges)
-    parse_result.ambiguous = remaining
+    return new_edges, remaining
 
-    total = dropped + resolved + passed
-    logger.info(
-        "workload_reducer: %d total — dropped %d (%.0f%%)  resolved %d (%.0f%%)  passed_to_agent %d (%.0f%%)",
-        total,
-        dropped, 100 * dropped / max(1, total),
-        resolved, 100 * resolved / max(1, total),
-        passed, 100 * passed / max(1, total),
-    )
-    return parse_result
+
+def _extract_generic_symbol_name(ref: AmbiguousRef) -> str:
+    raw = ref.raw.strip()
+    if ref.kind == "import":
+        return raw.rsplit(".", 1)[-1].rstrip(";").strip()
+    if ref.kind in ("inherits", "decorator"):
+        return raw.split("<")[0].split("[")[0].strip()
+    if ref.kind == "call":
+        return raw.rsplit(".", 1)[-1].split("(")[0].strip()
+    return raw
 
 
 # ---------------------------------------------------------------------------
-# Index
+# Shared utilities
 # ---------------------------------------------------------------------------
 
 def _build_name_index(parse_result: ParseResult) -> dict[str, list[str]]:
@@ -115,78 +170,15 @@ def _build_name_index(parse_result: ParseResult) -> dict[str, list[str]]:
     return dict(index)
 
 
-# ---------------------------------------------------------------------------
-# Candidate lookup
-# ---------------------------------------------------------------------------
-
-def _find_candidates(ref: AmbiguousRef, name_index: dict[str, list[str]]) -> list[str]:
-    name = _extract_symbol_name(ref)
-    if not name:
-        return []
-    return name_index.get(name, [])
-
-
-def _extract_symbol_name(ref: AmbiguousRef) -> str:
-    """Derive the simple lookup name from the raw ref text, by kind."""
-    raw = ref.raw.strip()
-
-    if ref.kind == "import":
-        return _parse_import_name(raw)
-
-    if ref.kind in ("inherits", "decorator"):
-        # Strip generic / array notation: "BaseEntity<T>" → "BaseEntity"
-        return raw.split("<")[0].split("[")[0].strip()
-
-    if ref.kind == "call":
-        # "userService.save" → "save";  "save" → "save";  strip parens if any
-        return raw.rsplit(".", 1)[-1].split("(")[0].strip()
-
-    return raw
-
-
-def _parse_import_name(raw: str) -> str:
-    """Extract the imported symbol name from any language's import syntax."""
-    cleaned = raw.strip().rstrip(";").strip()
-
-    # Python / TS / JS:  "from module import SomeClass [as Alias]"
-    #                    "import { SomeClass } from './module'"
-    if " import " in cleaned:
-        imported_part = cleaned.split(" import ", 1)[1].strip()
-        # Destructured TS/JS:  "{ SomeClass, Other }" → skip multi-import
-        imported_part = imported_part.strip("{} ")
-        names = [n.strip() for n in imported_part.split(",")]
-        if len(names) > 1:
-            return ""  # multi-name import → can't pick one, let C4b handle
-        return names[0].split(" as ")[0].strip()
-
-    # Java / Kotlin / Go:  "import com.example.service.UserService"
-    parts = cleaned.split()
-    if not parts:
-        return ""
-    dotted = parts[-1]
-
-    # Wildcard: "import com.example.*" → unresolvable
-    if dotted.endswith("*"):
-        return ""
-
-    return dotted.rsplit(".", 1)[-1]
-
-
-# ---------------------------------------------------------------------------
-# Same-package heuristic (for import / inherits / decorator collisions)
-# ---------------------------------------------------------------------------
-
 def _same_package_heuristic(source_id: str, candidates: list[str]) -> str | None:
-    """Pick the single candidate closest to the source file, or None.
-
-    Walks outward from exact directory → parent directory. Returns only if
-    exactly one candidate matches at that level — never guesses between two.
-    """
+    """Pick the single candidate closest to the source file, or None."""
     source_file = source_id.split("::")[0] if "::" in source_id else source_id
     source_dir = source_file.rsplit("/", 1)[0] if "/" in source_file else ""
 
-    same = [c for c in candidates if _file_of(c).startswith(source_dir + "/")
-            or _file_of(c) == source_file]
+    same = [
+        c for c in candidates
+        if _file_of(c).startswith(source_dir + "/") or _file_of(c) == source_file
+    ]
     if len(same) == 1:
         return same[0]
 
