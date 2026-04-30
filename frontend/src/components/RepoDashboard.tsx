@@ -69,9 +69,9 @@ export default function RepoDashboard() {
 
   const handleSync = async (e: FormEvent) => {
     e.preventDefault()
-    if (!token || !repoUrl.trim() || !pat.trim()) return
+    if (!token || !repoUrl.trim() || !pat.trim() || !branch.trim()) return
     setJustReadyId(null)
-    const graphId = await syncRepo(repoUrl.trim(), pat.trim(), branch.trim() || undefined, token)
+    const graphId = await syncRepo(repoUrl.trim(), pat.trim(), branch.trim(), token)
     if (graphId) {
       setBuildingId(graphId)
       setRepoUrl('')
@@ -175,7 +175,7 @@ export default function RepoDashboard() {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    Branch <span className="text-gray-600">(optional)</span>
+                    Branch <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -183,6 +183,7 @@ export default function RepoDashboard() {
                     onChange={(e) => setBranch(e.target.value)}
                     placeholder="main"
                     className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-indigo-500/50 transition-colors font-mono disabled:opacity-50"
+                    required
                     disabled={isBuilding}
                   />
                 </div>
@@ -194,7 +195,7 @@ export default function RepoDashboard() {
               )}
               <button
                 type="submit"
-                disabled={isBuilding || !repoUrl.trim() || !pat.trim()}
+                disabled={isBuilding || !repoUrl.trim() || !pat.trim() || !branch.trim()}
                 className="self-start px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold text-white transition-colors"
               >
                 {isBuilding ? (
@@ -340,9 +341,9 @@ function BuildingModal({ graphId, done, onClose }: { graphId: string; done: bool
           {/* Body: animation left + content right */}
           <div className="flex gap-8 items-center">
 
-            {/* Left: radar animation */}
+            {/* Left: submarine animation */}
             <div className="shrink-0">
-              <RadarScanAnimation activeIdx={activeIdx} done={isComplete} />
+              <SubmarineAnimation activeIdx={activeIdx} done={isComplete} />
             </div>
 
             {/* Right: stages or completion */}
@@ -403,140 +404,313 @@ function BuildingModal({ graphId, done, onClose }: { graphId: string; done: bool
   )
 }
 
-function RadarScanAnimation({ activeIdx, done }: { activeIdx: number; done: boolean }) {
+function SubmarineAnimation({ activeIdx: _activeIdx, done }: { activeIdx: number; done: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const stateRef  = useRef({ activeIdx, done })
+  const stateRef  = useRef({ done })
 
-  useEffect(() => { stateRef.current = { activeIdx, done } }, [activeIdx, done])
+  useEffect(() => { stateRef.current = { done } }, [done])
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
-    const S = 220
-    canvas.width  = S
-    canvas.height = S
-    const cx = S / 2, cy = S / 2
+    const W = 220, H = 220
+    canvas.width  = W
+    canvas.height = H
 
-    const NODES = [
-      { r: 0,  a: 0,                    color: '#6366f1', size: 5   },
-      { r: 44, a: 0,                    color: '#a78bfa', size: 3.5 },
-      { r: 44, a: (Math.PI * 2) / 3,    color: '#7c3aed', size: 3.5 },
-      { r: 44, a: (Math.PI * 4) / 3,    color: '#a78bfa', size: 3.5 },
-      { r: 78, a: Math.PI / 6,          color: '#34d399', size: 3   },
-      { r: 78, a: Math.PI * (5 / 6),    color: '#38bdf8', size: 3   },
-      { r: 78, a: Math.PI * (3 / 2),    color: '#f472b6', size: 3   },
-    ]
-    const EDGES: [number, number][] = [[0,1],[0,2],[0,3],[1,4],[2,5],[3,6],[4,5],[5,6]]
+    let subX = -55
+    const subY = 152
+    const centerX = W / 2
+    let speed = 0.0
+    let dir = 1          // 1 = left→right, -1 = right→left
+    let propAngle = 0
+    let frame = 0
+    let doneTextAlpha = 0
+    let donePulseSent = false
+    let doneDirSet = false   // locked once when done=true first fires
 
-    const nodeXY = (n: typeof NODES[0]) => ({
-      x: cx + Math.cos(n.a) * n.r,
-      y: cy + Math.sin(n.a) * n.r,
-    })
+    type Ping = { x: number; y: number; r: number; a: number }
+    const pings: Ping[] = []
+    let pingTimer = 50
 
-    const alpha  = NODES.map(() => 0)
-    const eAlpha = EDGES.map(() => 0)
-    let sweep  = 0
+    type Bubble = { x: number; y: number; r: number; vy: number; vx: number; a: number }
+    const bubbles: Bubble[] = []
+
     let animId: number
 
-    const tick = () => {
-      ctx.clearRect(0, 0, S, S)
-      const { activeIdx, done } = stateRef.current
-      sweep += 0.025
-
-      // Fade nodes in/out
-      for (let i = 0; i < NODES.length; i++) {
-        alpha[i] += ((done || i <= activeIdx ? 1 : 0) - alpha[i]) * 0.07
-      }
-      // Fade edges in when done
-      for (let i = 0; i < EDGES.length; i++) {
-        eAlpha[i] += ((done ? 1 : 0) - eAlpha[i]) * 0.05
-      }
-
-      // Dashed orbit rings
-      for (const r of [44, 78]) {
-        ctx.beginPath()
-        ctx.arc(cx, cy, r, 0, Math.PI * 2)
-        ctx.strokeStyle = 'rgba(99,102,241,0.1)'
-        ctx.lineWidth = 1
-        ctx.setLineDash([2, 7])
-        ctx.stroke()
-        ctx.setLineDash([])
-      }
-
-      // Outer boundary
+    function rRect(x: number, y: number, w: number, h: number, r: number) {
       ctx.beginPath()
-      ctx.arc(cx, cy, 92, 0, Math.PI * 2)
-      ctx.strokeStyle = 'rgba(99,102,241,0.06)'
+      ctx.moveTo(x + r, y)
+      ctx.lineTo(x + w - r, y)
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+      ctx.lineTo(x + w, y + h - r)
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+      ctx.lineTo(x + r, y + h)
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+      ctx.lineTo(x, y + r)
+      ctx.quadraticCurveTo(x, y, x + r, y)
+      ctx.closePath()
+    }
+
+    const tick = () => {
+      const { done } = stateRef.current
+      ctx.clearRect(0, 0, W, H)
+      frame++
+
+      // Background
+      const bg = ctx.createLinearGradient(0, 0, 0, H)
+      bg.addColorStop(0, '#06090e')
+      bg.addColorStop(0.3, '#080e1c')
+      bg.addColorStop(1, '#050810')
+      ctx.fillStyle = bg
+      ctx.fillRect(0, 0, W, H)
+
+      // Depth grid
+      ctx.setLineDash([3, 9])
+      ctx.lineWidth = 1
+      for (let gy = 108; gy < H; gy += 28) {
+        ctx.beginPath()
+        ctx.strokeStyle = `rgba(99,102,241,${0.03 + (gy - 108) * 0.0004})`
+        ctx.moveTo(0, gy)
+        ctx.lineTo(W, gy)
+        ctx.stroke()
+      }
+      ctx.setLineDash([])
+
+      // Water surface
+      const wY = 90
+      ctx.beginPath()
+      for (let wx = 0; wx <= W; wx++) {
+        const wy = wY + Math.sin(wx * 0.045 + frame * 0.022) * 3.5
+                      + Math.sin(wx * 0.018 + frame * 0.014) * 2
+        if (wx === 0) ctx.moveTo(wx, wy); else ctx.lineTo(wx, wy)
+      }
+      ctx.strokeStyle = 'rgba(56,189,248,0.22)'
+      ctx.lineWidth = 1.5
+      ctx.stroke()
+
+      // Above-water fill
+      ctx.beginPath()
+      for (let wx = 0; wx <= W; wx++) {
+        const wy = wY + Math.sin(wx * 0.045 + frame * 0.022) * 3.5
+                      + Math.sin(wx * 0.018 + frame * 0.014) * 2
+        if (wx === 0) ctx.moveTo(wx, wy); else ctx.lineTo(wx, wy)
+      }
+      ctx.lineTo(W, 0); ctx.lineTo(0, 0); ctx.closePath()
+      const wGrad = ctx.createLinearGradient(0, 0, 0, wY)
+      wGrad.addColorStop(0, 'rgba(56,189,248,0.06)')
+      wGrad.addColorStop(1, 'rgba(56,189,248,0.01)')
+      ctx.fillStyle = wGrad
+      ctx.fill()
+
+      // Submarine movement
+      if (!done) {
+        speed = Math.min(speed + 0.018, 0.95)
+        propAngle += 0.13
+
+        // Flip direction at edges
+        subX += speed * dir
+        if (dir === 1 && subX > W + 55) {
+          dir = -1; subX = W + 55; donePulseSent = false
+        } else if (dir === -1 && subX < -55) {
+          dir = 1; subX = -55; donePulseSent = false
+        }
+      } else {
+        // Lock in the direction toward center once
+        if (!doneDirSet) {
+          dir = subX <= centerX ? 1 : -1
+          doneDirSet = true
+        }
+
+        const dist = Math.abs(centerX - subX)
+        if (dist > 1) {
+          // Ease in: fast far away, slow near center
+          speed = 0.08 + Math.min(dist / 80, 1) * 0.55
+          subX += speed * dir
+          // Clamp so we don't overshoot center
+          if (dir === 1 && subX > centerX) subX = centerX
+          if (dir === -1 && subX < centerX) subX = centerX
+        } else {
+          subX = centerX
+          speed = 0
+        }
+
+        propAngle += Math.max(speed, 0) * 0.14
+        doneTextAlpha = Math.min(doneTextAlpha + 0.018, 1)
+
+        if (!donePulseSent && dist < 8) {
+          const bowX = centerX + dir * 44
+          pings.push({ x: bowX, y: subY, r: 0,  a: 1.1 })
+          pings.push({ x: bowX, y: subY, r: 18, a: 0.8 })
+          donePulseSent = true
+        }
+      }
+
+      // Sonar ping emit from bow
+      pingTimer++
+      if (pingTimer >= 72 && !done) {
+        pings.push({ x: subX + dir * 44, y: subY, r: 0, a: 0.75 })
+        pingTimer = 0
+      }
+
+      // Draw pings
+      for (let i = pings.length - 1; i >= 0; i--) {
+        const p = pings[i]
+        p.r += done ? 2.2 : 1.6
+        p.a -= 0.01
+        if (p.a <= 0) { pings.splice(i, 1); continue }
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+        ctx.strokeStyle = done
+          ? `rgba(52,211,153,${Math.max(0, p.a)})`
+          : `rgba(99,102,241,${Math.max(0, p.a)})`
+        ctx.lineWidth = 1.2
+        ctx.stroke()
+      }
+
+      // Bubbles from propeller (always behind the sub)
+      if (frame % 9 === 0 && speed > 0.15) {
+        bubbles.push({
+          x: subX - dir * 41 + (Math.random() - 0.5) * 8,
+          y: subY - 10,
+          r: 0.8 + Math.random() * 2,
+          vy: -(0.28 + Math.random() * 0.38),
+          vx: (Math.random() - 0.5) * 0.18,
+          a: 0.5 + Math.random() * 0.3,
+        })
+      }
+      for (let i = bubbles.length - 1; i >= 0; i--) {
+        const b = bubbles[i]
+        b.y += b.vy
+        b.x += b.vx + Math.sin(frame * 0.07 + i) * 0.22
+        b.a -= 0.007
+        if (b.a <= 0 || b.y < wY - 8) { bubbles.splice(i, 1); continue }
+        ctx.beginPath()
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(147,197,253,${b.a})`
+        ctx.lineWidth = 0.8
+        ctx.stroke()
+      }
+
+      // ── Draw submarine ──
+      ctx.save()
+      ctx.translate(subX, subY)
+      if (dir === -1) ctx.scale(-1, 1)   // mirror so bow always faces direction of travel
+
+      // Propeller wake
+      for (let wi = 0; wi < 3; wi++) {
+        const wa = (speed / 0.95) * (0.13 - wi * 0.04)
+        if (wa < 0.01) continue
+        ctx.beginPath()
+        ctx.ellipse(-45 - wi * 8, 0, 3 + wi, 4 + wi * 1.5, 0, 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(56,189,248,${wa})`
+        ctx.lineWidth = 1
+        ctx.stroke()
+      }
+
+      const bw = 88, bh = 22
+
+      // Main hull
+      ctx.beginPath()
+      ctx.ellipse(0, 0, bw / 2, bh / 2, 0, 0, Math.PI * 2)
+      ctx.fillStyle = '#2a4568'
+      ctx.fill()
+      ctx.strokeStyle = '#456898'
+      ctx.lineWidth = 1.2
+      ctx.stroke()
+
+      // Hull highlight
+      ctx.beginPath()
+      ctx.ellipse(5, -bh / 4, bw / 2 - 10, bh / 5, 0, Math.PI, Math.PI * 2)
+      ctx.fillStyle = 'rgba(80,120,160,0.22)'
+      ctx.fill()
+
+      // Conning tower
+      const tX = 12, tW = 22, tH = 15
+      rRect(tX - tW / 2, -bh / 2 - tH, tW, tH, 3)
+      ctx.fillStyle = '#223858'
+      ctx.fill()
+      ctx.strokeStyle = '#456898'
       ctx.lineWidth = 1
       ctx.stroke()
 
-      // Radar sweep (only while building)
-      if (!done) {
-        ctx.save()
-        ctx.beginPath()
-        ctx.moveTo(cx, cy)
-        ctx.arc(cx, cy, 92, sweep - Math.PI / 3, sweep)
-        ctx.closePath()
-        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 92)
-        g.addColorStop(0, 'rgba(99,102,241,0)')
-        g.addColorStop(1, 'rgba(99,102,241,0.11)')
-        ctx.fillStyle = g
-        ctx.fill()
+      // Tower window
+      ctx.beginPath()
+      ctx.arc(tX, -bh / 2 - tH / 2, 3, 0, Math.PI * 2)
+      ctx.fillStyle = done ? 'rgba(52,211,153,0.5)' : 'rgba(56,189,248,0.35)'
+      ctx.fill()
+      ctx.strokeStyle = done ? 'rgba(52,211,153,0.8)' : 'rgba(56,189,248,0.6)'
+      ctx.lineWidth = 0.8
+      ctx.stroke()
 
+      // Periscope
+      ctx.beginPath()
+      ctx.moveTo(tX + 6, -bh / 2 - tH)
+      ctx.lineTo(tX + 6, -bh / 2 - tH - 13)
+      ctx.lineTo(tX + 13, -bh / 2 - tH - 13)
+      ctx.strokeStyle = '#456898'
+      ctx.lineWidth = 1.5
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(tX + 13, -bh / 2 - tH - 13, 2.5, 0, Math.PI * 2)
+      ctx.fillStyle = done ? '#34d399' : '#38bdf8'
+      ctx.fill()
+
+      // Diving planes
+      ctx.beginPath()
+      ctx.moveTo(-8, -bh / 2)
+      ctx.lineTo(-8, -bh / 2 - 7)
+      ctx.lineTo(6, -bh / 2 - 2)
+      ctx.lineTo(6, -bh / 2)
+      ctx.closePath()
+      ctx.fillStyle = '#223858'
+      ctx.fill()
+      ctx.strokeStyle = '#456898'
+      ctx.lineWidth = 0.8
+      ctx.stroke()
+
+      // Propeller blades
+      ctx.save()
+      ctx.translate(-bw / 2 + 2, 0)
+      ctx.rotate(propAngle)
+      for (let bi = 0; bi < 3; bi++) {
+        ctx.save()
+        ctx.rotate((Math.PI * 2 * bi) / 3)
         ctx.beginPath()
-        ctx.moveTo(cx, cy)
-        ctx.lineTo(cx + Math.cos(sweep) * 92, cy + Math.sin(sweep) * 92)
-        ctx.strokeStyle = 'rgba(99,102,241,0.55)'
-        ctx.lineWidth = 1.5
-        ctx.stroke()
+        ctx.ellipse(0, -7.5, 2.5, 7.5, 0.25, 0, Math.PI * 2)
+        ctx.fillStyle = '#456898'
+        ctx.fill()
         ctx.restore()
       }
+      ctx.beginPath()
+      ctx.arc(0, 0, 2.5, 0, Math.PI * 2)
+      ctx.fillStyle = '#5b82a6'
+      ctx.fill()
+      ctx.restore()
 
-      // Edges (only when done, clean sharp lines)
-      for (let i = 0; i < EDGES.length; i++) {
-        if (eAlpha[i] < 0.01) continue
-        const [a, b] = EDGES[i]
-        const pa = nodeXY(NODES[a]), pb = nodeXY(NODES[b])
+      // Bow light
+      ctx.beginPath()
+      ctx.arc(bw / 2 - 4, 0, 3.5, 0, Math.PI * 2)
+      ctx.fillStyle = done ? '#34d399' : '#6366f1'
+      ctx.fill()
+      if (done || frame % 60 < 30) {
         ctx.beginPath()
-        ctx.moveTo(pa.x, pa.y)
-        ctx.lineTo(pb.x, pb.y)
-        ctx.strokeStyle = `rgba(99,102,241,${eAlpha[i] * 0.22})`
-        ctx.lineWidth = 1
-        ctx.stroke()
-      }
-
-      // Nodes with crosshair ticks
-      for (let i = 0; i < NODES.length; i++) {
-        if (alpha[i] < 0.01) continue
-        const n  = NODES[i]
-        const { x, y } = nodeXY(n)
-        const a  = alpha[i]
-        const ha = Math.round(a * 255).toString(16).padStart(2, '0')
-        const hd = Math.round(a * 100).toString(16).padStart(2, '0')
-        const tk = n.size + 5
-
-        ctx.strokeStyle = n.color + hd
-        ctx.lineWidth = 0.8
-        ctx.beginPath()
-        ctx.moveTo(x - tk, y);         ctx.lineTo(x - n.size - 1, y)
-        ctx.moveTo(x + n.size + 1, y); ctx.lineTo(x + tk, y)
-        ctx.moveTo(x, y - tk);         ctx.lineTo(x, y - n.size - 1)
-        ctx.moveTo(x, y + n.size + 1); ctx.lineTo(x, y + tk)
-        ctx.stroke()
-
-        ctx.beginPath()
-        ctx.arc(x, y, n.size, 0, Math.PI * 2)
-        ctx.fillStyle = n.color + ha
+        ctx.arc(bw / 2 - 4, 0, 7, 0, Math.PI * 2)
+        ctx.fillStyle = done ? 'rgba(52,211,153,0.14)' : 'rgba(99,102,241,0.12)'
         ctx.fill()
       }
 
-      // Green center dot when complete
-      if (done && alpha[0] > 0.5) {
-        ctx.beginPath()
-        ctx.arc(cx, cy, 5, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(52,211,153,${alpha[0] * 0.85})`
-        ctx.fill()
+      ctx.restore()
+
+      // Done label
+      if (doneTextAlpha > 0) {
+        ctx.save()
+        ctx.globalAlpha = doneTextAlpha
+        ctx.fillStyle = '#34d399'
+        ctx.font = '600 9px ui-monospace, monospace'
+        ctx.textAlign = 'center'
+        ctx.fillText('TARGET ACQUIRED', W / 2, H - 14)
+        ctx.restore()
       }
 
       animId = requestAnimationFrame(tick)

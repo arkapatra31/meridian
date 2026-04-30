@@ -13,11 +13,43 @@ One shared walker, three thin entry points covering:
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from tree_sitter_language_pack import get_parser
 
 from ..models import AmbiguousRef, Edge, Node
 
 _parsers: dict[str, object] = {}
+
+# Bare identifiers and member-expression receivers that are never project nodes.
+# Calls to these are dropped rather than handed to Pass 2.
+_JS_GLOBAL_OBJECTS: frozenset[str] = frozenset({
+    # Language built-ins
+    "Object", "Array", "String", "Number", "Boolean", "BigInt", "Symbol",
+    "Function", "Promise", "Proxy", "Reflect",
+    "Map", "Set", "WeakMap", "WeakSet", "WeakRef",
+    "ArrayBuffer", "DataView", "SharedArrayBuffer",
+    "Int8Array", "Uint8Array", "Uint8ClampedArray", "Int16Array", "Uint16Array",
+    "Int32Array", "Uint32Array", "Float32Array", "Float64Array",
+    "BigInt64Array", "BigUint64Array",
+    "Error", "TypeError", "RangeError", "ReferenceError", "SyntaxError",
+    "URIError", "EvalError",
+    "RegExp", "Date", "JSON", "Math", "Intl", "Atomics",
+    "URL", "URLSearchParams",
+    # Browser globals
+    "window", "document", "navigator", "location", "history",
+    "localStorage", "sessionStorage", "performance", "screen",
+    "console", "fetch", "XMLHttpRequest", "WebSocket", "EventSource",
+    # Node.js globals
+    "process", "global", "Buffer",
+    # Global functions (bare calls)
+    "setTimeout", "clearTimeout", "setInterval", "clearInterval",
+    "setImmediate", "clearImmediate", "queueMicrotask",
+    "parseInt", "parseFloat", "isNaN", "isFinite",
+    "encodeURIComponent", "decodeURIComponent",
+    "encodeURI", "decodeURI", "escape", "unescape",
+    "require",
+})
 
 
 def _get_parser(lang: str):
@@ -26,32 +58,33 @@ def _get_parser(lang: str):
     return _parsers[lang]
 
 
-def parse_javascript(rel_path: str, source: bytes, repo_root: object = None):
-    return _parse(rel_path, source, "javascript")
+def parse_javascript(rel_path: str, source: bytes, repo_root: Path | None = None):
+    return _parse(rel_path, source, "javascript", repo_root)
 
 
-def parse_typescript(rel_path: str, source: bytes, repo_root: object = None):
-    return _parse(rel_path, source, "typescript")
+def parse_typescript(rel_path: str, source: bytes, repo_root: Path | None = None):
+    return _parse(rel_path, source, "typescript", repo_root)
 
 
-def parse_tsx(rel_path: str, source: bytes, repo_root: object = None):
-    return _parse(rel_path, source, "tsx")
+def parse_tsx(rel_path: str, source: bytes, repo_root: Path | None = None):
+    return _parse(rel_path, source, "tsx", repo_root)
 
 
 def _parse(
-    rel_path: str, source: bytes, lang: str
+    rel_path: str, source: bytes, lang: str, repo_root: Path | None = None
 ) -> tuple[list[Node], list[Edge], list[AmbiguousRef]]:
     tree = _get_parser(lang).parse(source)
-    walker = _JsWalker(rel_path, source, lang)
+    walker = _JsWalker(rel_path, source, lang, repo_root)
     walker.visit_program(tree.root_node)
     return walker.nodes, walker.edges, walker.ambiguous
 
 
 class _JsWalker:
-    def __init__(self, rel_path: str, source: bytes, lang: str) -> None:
+    def __init__(self, rel_path: str, source: bytes, lang: str, repo_root: Path | None = None) -> None:
         self.file = rel_path
         self.src = source
         self.lang = lang
+        self.repo_root = repo_root
         self.module_id = rel_path
         self.nodes: list[Node] = []
         self.edges: list[Edge] = []
@@ -128,6 +161,17 @@ class _JsWalker:
         elif t in ("lexical_declaration", "variable_declaration"):
             self._visit_var_decl(node)
         elif t == "import_statement":
+            source_n = next(
+                (c for c in node.named_children if c.type == "string"), None
+            )
+            if source_n is not None:
+                raw_source = self._text(source_n).strip("\"'`")
+                if self._is_npm_package(raw_source):
+                    return  # npm/third-party — never a project node
+                resolved = self._resolve_js_import(raw_source)
+                if resolved is not None:
+                    self.edges.append(Edge(self.module_id, resolved, "IMPORTS"))
+                    return
             self.ambiguous.append(
                 AmbiguousRef(
                     source=self.module_id,
@@ -211,9 +255,12 @@ class _JsWalker:
             if c.type in ("extends_type_clause", "extends_clause"):
                 for cc in self._find_all(c, {"identifier", "type_identifier"}):
                     raw = self._text(cc)
-                    self.ambiguous.append(
-                        AmbiguousRef(cls_id, raw, "inherits", self.file, cc.start_point[0] + 1)
-                    )
+                    if raw in self.local_defs:
+                        self.edges.append(Edge(cls_id, self.local_defs[raw], "INHERITS"))
+                    else:
+                        self.ambiguous.append(
+                            AmbiguousRef(cls_id, raw, "inherits", self.file, cc.start_point[0] + 1)
+                        )
 
     def _visit_function(self, n) -> None:
         name_n = n.child_by_field_name("name")
@@ -322,14 +369,72 @@ class _JsWalker:
                 self.edges.append(Edge(source_id, class_local[raw], "CALLS"))
             elif raw in self.local_defs:
                 self.edges.append(Edge(source_id, self.local_defs[raw], "CALLS"))
+            elif raw in _JS_GLOBAL_OBJECTS:
+                return  # stdlib / runtime — never a project node
             else:
                 self.ambiguous.append(
                     AmbiguousRef(source_id, raw, "call", self.file, fn.start_point[0] + 1)
                 )
+        elif fn.type == "member_expression":
+            obj_n = fn.child_by_field_name("object")
+            prop_n = fn.child_by_field_name("property")
+            if obj_n is not None and prop_n is not None:
+                obj_text = self._text(obj_n)
+                prop_text = self._text(prop_n)
+                if obj_text == "this" and prop_text in class_local:
+                    self.edges.append(Edge(source_id, class_local[prop_text], "CALLS"))
+                    return
+                if obj_text in _JS_GLOBAL_OBJECTS:
+                    return  # e.g. console.log, Math.floor, JSON.stringify
+            self.ambiguous.append(
+                AmbiguousRef(source_id, self._text(fn), "call", self.file, fn.start_point[0] + 1)
+            )
         else:
             self.ambiguous.append(
                 AmbiguousRef(source_id, self._text(fn), "call", self.file, fn.start_point[0] + 1)
             )
+
+    @staticmethod
+    def _is_npm_package(source_str: str) -> bool:
+        """True for npm/node_modules imports that are never project nodes.
+
+        Drops bare package names ('react', 'axios', 'lodash') and scoped packages
+        ('@nestjs/core', '@angular/common'). Keeps path aliases that MAY resolve
+        to project files: '@/' (Vite/CRA), '~/', '#' (TypeScript paths).
+        """
+        if source_str.startswith(("./", "../")):
+            return False  # relative — handled by _resolve_js_import
+        if source_str.startswith("@/") or source_str.startswith("~/") or source_str.startswith("#"):
+            return False  # project-relative path aliases
+        return True  # npm package or bare specifier
+
+    def _resolve_js_import(self, source_str: str) -> str | None:
+        """Resolve a relative import path to a repo-relative file path, or None."""
+        if self.repo_root is None:
+            return None
+        if not (source_str.startswith("./") or source_str.startswith("../")):
+            return None
+        try:
+            repo_root = self.repo_root.resolve()
+            file_dir = (repo_root / self.file).parent
+            base = (file_dir / source_str).resolve()
+            # Already has a supported extension
+            if base.suffix in (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"):
+                if base.is_file():
+                    return base.relative_to(repo_root).as_posix()
+            # Try appending extensions
+            for suffix in (".ts", ".tsx", ".js", ".jsx", ".mjs"):
+                candidate = base.with_suffix(suffix)
+                if candidate.is_file():
+                    return candidate.relative_to(repo_root).as_posix()
+            # Try index files (directory import)
+            for index in ("index.ts", "index.tsx", "index.js"):
+                candidate = base / index
+                if candidate.is_file():
+                    return candidate.relative_to(repo_root).as_posix()
+        except (OSError, ValueError):
+            pass
+        return None
 
     def _params(self, params_n) -> list[str]:
         out: list[str] = []

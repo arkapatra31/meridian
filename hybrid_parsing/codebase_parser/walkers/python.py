@@ -190,6 +190,8 @@ class _PythonWalker:
                 raw = self._text(c)
                 if c.type == "identifier" and raw in self.local_defs:
                     self.edges.append(Edge(cls_id, self.local_defs[raw], "INHERITS"))
+                elif c.type == "identifier" and raw in self.imported_names:
+                    self.edges.append(Edge(cls_id, self.imported_names[raw], "INHERITS"))
                 else:
                     self.ambiguous.append(
                         AmbiguousRef(
@@ -480,13 +482,16 @@ class _PythonWalker:
         return (None, None)
 
     def _emit_decorators(self, decorators, target_id: str) -> None:
-        # Only emit DECORATES when we can resolve the decorator locally.
+        # Only emit DECORATES when we can resolve the decorator locally or via imports.
         # Unresolvable decorators (`@router.post(...)`, `@app.middleware`, etc.)
         # are framework bindings — dropped, not handed to Pass 2.
         for d in decorators:
             head = self._decorator_head(d)
-            if head is not None and head in self.local_defs:
-                self.edges.append(Edge(target_id, self.local_defs[head], "DECORATES"))
+            if head is not None:
+                if head in self.local_defs:
+                    self.edges.append(Edge(target_id, self.local_defs[head], "DECORATES"))
+                elif head in self.imported_names:
+                    self.edges.append(Edge(target_id, self.imported_names[head], "DECORATES"))
 
     def _decorator_head(self, d) -> str | None:
         """Return the bare identifier head of a decorator, if simple, else None."""

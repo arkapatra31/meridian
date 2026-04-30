@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useMemo } from 'react'
+import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import ForceGraph3D from 'react-force-graph-3d'
 import * as THREE from 'three'
 import { useGraphStore } from '@/store'
@@ -75,6 +75,7 @@ function toggleSet<T>(set: Set<T>, val: T): Set<T> {
 export default function GraphCanvas() {
   const { graphData, selectedNode, setSelectedNode, searchQuery, setSearchQuery } = useGraphStore()
   const containerRef = useRef<HTMLDivElement>(null)
+  const fgRef = useRef<any>(null)
   const [dims, setDims] = useState({ w: window.innerWidth, h: window.innerHeight - 56 })
   const [filtersOpen, setFiltersOpen] = useState(false)
 
@@ -135,10 +136,54 @@ export default function GraphCanvas() {
     })),
   }), [filteredNodes, filteredEdges])
 
+  // Collect glow halo materials so animateGlow can update them every frame.
+  const glowMatsRef = useRef<THREE.MeshBasicMaterial[]>([])
+  useEffect(() => { glowMatsRef.current = [] }, [fgData])
+
   const nodeThreeObj = useMemo(() => (node: object) => {
     const n = node as GraphNode
-    return makeLabelSprite(n.name, nodeColor(n.community))
+    const color = nodeColor(n.community)
+
+    // Additive halo sphere slightly bigger than the default node sphere.
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(color),
+      transparent: true,
+      opacity: 0.6,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.FrontSide,
+    })
+    glowMatsRef.current.push(glowMat)
+    const halo = new THREE.Mesh(new THREE.SphereGeometry(7, 14, 14), glowMat)
+
+    const group = new THREE.Group()
+    group.add(halo)
+    group.add(makeLabelSprite(n.name, color))
+    return group
   }, [])
+
+  // Pulse: opacity oscillates 0→max→0 with a 0.5 s full period.
+  const animateGlow = useCallback(() => {
+    const pulse = 0.5 + 0.5 * Math.sin(Date.now() * Math.PI / 250)
+    for (const mat of glowMatsRef.current) mat.opacity = pulse * 0.7
+  }, [])
+
+  useEffect(() => {
+    let rafId: number
+    const loop = () => { animateGlow(); rafId = requestAnimationFrame(loop) }
+    rafId = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(rafId)
+  }, [animateGlow])
+
+  const unlockZoom = () => {
+    const fg = fgRef.current
+    if (!fg) return
+    const controls = fg.controls()
+    if (controls) {
+      controls.minDistance = 0.01
+      controls.maxDistance = Infinity
+    }
+  }
 
   const isFiltered =
     godOnly || orphansOnly ||
@@ -149,6 +194,7 @@ export default function GraphCanvas() {
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
       <ForceGraph3D
+        ref={fgRef}
         graphData={fgData}
         width={dims.w}
         height={dims.h}
@@ -163,9 +209,26 @@ export default function GraphCanvas() {
         linkOpacity={0.35}
         linkDirectionalArrowLength={3}
         linkDirectionalArrowRelPos={1}
+        onEngineStop={unlockZoom}
         onNodeClick={(node) => {
           const n = node as GraphNode
           setSelectedNode(selectedNode?.id === n.id ? null : n)
+
+          // Fly camera to face the clicked node and re-center the orbit on it.
+          // This makes subsequent scroll-zoom go straight into that node.
+          const fg = fgRef.current
+          if (!fg) return
+          const nx = (n as any).x ?? 0
+          const ny = (n as any).y ?? 0
+          const nz = (n as any).z ?? 0
+          const mag = Math.hypot(nx, ny, nz) || 1
+          const flyDistance = 80
+          const scale = (mag + flyDistance) / mag
+          fg.cameraPosition(
+            { x: nx * scale, y: ny * scale, z: nz * scale },
+            { x: nx, y: ny, z: nz },
+            1200,
+          )
         }}
       />
 

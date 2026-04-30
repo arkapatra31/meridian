@@ -25,6 +25,7 @@ from hybrid_parsing.codebase_parser import parse_codebase
 from hybrid_parsing.codebase_parser.models import ParseResult
 from hybrid_parsing.surgical_agent import resolve_ambiguous
 from hybrid_parsing.tree_indexer import index_tree
+from hybrid_parsing.workload_reducer import reduce_workload
 from ingestion_layer.repo_cache.clone_repo import clone_repo
 from ingestion_layer.utils.db_utils import persist_clone
 from orchestrator.utils.db_utils import record_sync_run
@@ -102,6 +103,9 @@ async def full_build(
 
 
 async def _parse_and_resolve(repo: str) -> ParseResult:
-    """C4a (tree-sitter, CPU-bound) → C4b (surgical Agent SDK, async)."""
+    """C4a → Pass 1.5 workload reducer → C4b (only if refs remain)."""
     parse_result = await run_in_threadpool(parse_codebase, repo)
-    return await resolve_ambiguous(parse_result)
+    parse_result = await run_in_threadpool(reduce_workload, parse_result)
+    if parse_result.ambiguous:
+        parse_result = await resolve_ambiguous(parse_result)
+    return parse_result

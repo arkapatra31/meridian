@@ -51,6 +51,14 @@ _SKIP_DIRS: frozenset[str] = frozenset(
         "out",
         "bin",
         "obj",
+        "test",
+        "tests",
+        "__tests__",
+        "spec",
+        "specs",
+        "e2e",
+        "integration_tests",
+        "functional_tests",
     }
 )
 
@@ -194,7 +202,17 @@ def _parse_one_file(path: Path, root: Path, result: ParseResult) -> None:
 
 def _iter_source_files(root: Path) -> Iterator[Path]:
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS and not d.startswith(".")]
+        dirnames[:] = [
+            d for d in dirnames
+            if d not in _SKIP_DIRS
+            and not d.startswith(".")
+            and "test" not in d.lower()
+            and ".properties" not in d.lower()
+            and ".yaml" not in d.lower()
+            and ".yml" not in d.lower()
+            and ".json" not in d.lower()
+            and ".xml" not in d.lower()
+        ]
         for fname in filenames:
             if fname.startswith("."):
                 continue

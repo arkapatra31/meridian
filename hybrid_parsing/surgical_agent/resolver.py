@@ -17,9 +17,8 @@ resolved ambiguous refs dropped from `ambiguous`, unresolved kept.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-import re
+import time
 
 from claude_agent_sdk import (
     AgentDefinition,
@@ -41,6 +40,16 @@ from .prompts import (
     RESEARCHER_PROMPT,
     build_orchestrator_prompt,
 )
+from .utils import (
+    _Progress,
+    _Stats,
+    _chunk,
+    _dedup,
+    _parse_resolutions,
+    _stringify_tool_result,
+    _summarize_tool_input,
+    _truncate,
+)
 
 logger = logging.getLogger("meridian.surgical_agent")
 
@@ -53,9 +62,16 @@ _KIND_TO_EDGE = {
 
 # Refs per orchestrator call. Small enough that the orchestrator can fan all
 # of them out as parallel Agent tool uses in one or two responses.
-CHUNK_SIZE = 15
+CHUNK_SIZE = 30
 # Concurrent orchestrator calls. Bound by Anthropic concurrency, not CPU.
-MAX_CONCURRENT_CHUNKS = 4
+MAX_CONCURRENT_CHUNKS = 10
+# Seconds before a single chunk is cancelled and treated as empty. Prevents
+# one hung orchestrator call from stalling the entire gather.
+CHUNK_TIMEOUT_S = 300
+
+# Set to True for full per-subagent log lines; False for a single dynamic
+# progress bar written to stderr instead.
+SUBAGENT_VERBOSITY: bool = False
 
 
 def _researcher_definition() -> AgentDefinition:
@@ -65,6 +81,8 @@ def _researcher_definition() -> AgentDefinition:
         prompt=RESEARCHER_PROMPT,
         tools=["Read", "Grep", "Glob"],
         model="haiku",
+        effort="medium",
+        maxTurns=1
     )
 
 
@@ -74,11 +92,17 @@ async def resolve_ambiguous(parse_result: ParseResult) -> ParseResult:
         return parse_result
 
     repo_root = resolve_repo_path(parse_result.repo)
+    # Fresh instance per call — not the singleton used by C2. Haiku is sufficient
+    # for dispatch-and-aggregate work; max_turns=5 guarantees the model gets a
+    # turn to emit JSON after tool results return (dispatch=1 + results=1 + aggregate=1).
     agent = ClaudeCodeAgent.get_instance(
         system_prompt=ORCHESTRATOR_SYSTEM_PROMPT,
-        allowed_tools=["Agent", "Read", "Grep", "Glob"],
+        allowed_tools=["Agent"],
         cwd=str(repo_root),
         agents={"researcher": _researcher_definition()},
+        model="haiku",
+        max_turns=5,
+        name="surgical_agent",
     )
 
     # 1. Dedup: collapse identical (file, raw, kind, source) refs.
@@ -91,20 +115,64 @@ async def resolve_ambiguous(parse_result: ParseResult) -> ParseResult:
     )
 
     # 2. Chunk + fan out concurrently.
-    candidate_ids = [n.id for n in parse_result.nodes]
     chunks = list(_chunk(unique_refs, CHUNK_SIZE))
     sem = asyncio.Semaphore(MAX_CONCURRENT_CHUNKS)
+    progress = _Progress(len(unique_refs), len(chunks)) if not SUBAGENT_VERBOSITY else None
+    stats = _Stats()
+    wall_start = time.monotonic()
 
     async def run_chunk(chunk_idx: int, chunk: list[tuple[int, AmbiguousRef]]) -> dict[int, dict]:
         async with sem:
-            logger.info(
-                "surgical_agent: chunk %d/%d dispatching %d refs",
-                chunk_idx + 1, len(chunks), len(chunk),
-            )
-            return await _resolve_chunk(agent, chunk_idx, chunk, candidate_ids)
+            if progress is not None:
+                await progress.chunk_start(chunk_idx)
+            timed_out = False
+            try:
+                result = await asyncio.wait_for(
+                    _resolve_chunk(agent, chunk_idx, chunk, progress, stats),
+                    timeout=CHUNK_TIMEOUT_S,
+                )
+            except asyncio.TimeoutError:
+                timed_out = True
+                result = {}
+
+            n_picked = len(chunk)
+            n_resolved = len(result)
+            n_dropped = n_picked - n_resolved
+
+            if timed_out:
+                logger.warning(
+                    "surgical_agent: sub-agent %d — %d nodes picked — timed out after %ds",
+                    chunk_idx + 1, n_picked, CHUNK_TIMEOUT_S,
+                )
+            else:
+                logger.info(
+                    "surgical_agent: sub-agent %d — %d nodes picked — resolved %d / dropped %d",
+                    chunk_idx + 1, n_picked, n_resolved, n_dropped,
+                )
+
+            if progress is not None:
+                await progress.chunk_done(chunk_idx, n_picked)
+            return result
 
     chunk_results = await asyncio.gather(
         *[run_chunk(i, c) for i, c in enumerate(chunks)]
+    )
+    if progress is not None:
+        progress.finish()
+
+    total_unique_resolved = sum(len(r) for r in chunk_results)
+    remaining_unique = len(unique_refs) - total_unique_resolved
+    logger.info(
+        "surgical_agent: remaining %d/%d nodes unresolved",
+        remaining_unique, len(unique_refs),
+    )
+
+    wall_s = time.monotonic() - wall_start
+    logger.info(
+        "surgical_agent: DONE  wall=%.1fs  api_time=%.1fs  cost=$%.4f",
+        wall_s,
+        stats.api_ms / 1000,
+        stats.cost_usd,
     )
 
     # Merge: unique_index → resolution dict
@@ -150,32 +218,18 @@ async def resolve_ambiguous(parse_result: ParseResult) -> ParseResult:
     return parse_result
 
 
-def _dedup(
-    refs: list[AmbiguousRef],
-) -> tuple[list[AmbiguousRef], list[int]]:
-    """Returns (unique_refs, original_index → unique_index)."""
-    key_to_unique: dict[tuple, int] = {}
-    unique_refs: list[AmbiguousRef] = []
-    mapping: list[int] = []
-    for ref in refs:
-        key = (ref.file, ref.raw, ref.kind, ref.source)
-        if key not in key_to_unique:
-            key_to_unique[key] = len(unique_refs)
-            unique_refs.append(ref)
-        mapping.append(key_to_unique[key])
-    return unique_refs, mapping
-
-
 async def _resolve_chunk(
     agent: ClaudeCodeAgent,
     chunk_idx: int,
     chunk: list[tuple[int, AmbiguousRef]],
-    candidate_ids: list[str],
+    progress: _Progress | None = None,
+    stats: _Stats | None = None,
 ) -> dict[int, dict]:
     """Run one orchestrator call for a chunk of unique refs.
 
     `chunk` items are (unique_index, AmbiguousRef). Returns
-    {unique_index: {target, reasoning}} for resolved entries.
+    {unique_index: {target, reasoning}} for refs with a non-null target.
+    Refs the agent cannot resolve are dropped — no retry, no fallback.
     """
     indexed = [
         {
@@ -188,12 +242,13 @@ async def _resolve_chunk(
         }
         for batch_i, (_, r) in enumerate(chunk)
     ]
-    prompt = build_orchestrator_prompt(indexed, candidate_ids)
-    text = await _run_agent(agent, prompt, chunk_idx)
+    prompt = build_orchestrator_prompt(indexed)
+    text = await _run_agent(agent, prompt, chunk_idx, stats)
     resolutions = _parse_resolutions(text)
     if resolutions is None:
         logger.warning(
-            "surgical_agent: chunk %d returned no parseable JSON", chunk_idx
+            "surgical_agent: chunk %d returned no parseable JSON — dropping %d refs",
+            chunk_idx, len(chunk),
         )
         return {}
 
@@ -201,19 +256,23 @@ async def _resolve_chunk(
     by_index = {item.get("ref_index"): item for item in resolutions}
     for batch_i, (uidx, _) in enumerate(chunk):
         item = by_index.get(batch_i)
-        if item:
+        # Only keep entries with a concrete non-null target — null means unresolvable, drop it.
+        if item and item.get("target"):
             out[uidx] = item
-    logger.info(
-        "surgical_agent: chunk %d resolved %d/%d", chunk_idx, len(out), len(chunk)
-    )
+    if SUBAGENT_VERBOSITY:
+        logger.info(
+            "surgical_agent: chunk %d resolved %d/%d", chunk_idx, len(out), len(chunk)
+        )
     return out
 
 
-async def _run_agent(agent: ClaudeCodeAgent, prompt: str, chunk_idx: int) -> str:
-    """Drain orchestrator stream. Logs every block so subagent activity is
-    visible — text (reasoning), tool dispatches (subagent input), tool results
-    (subagent output).
-    """
+async def _run_agent(
+    agent: ClaudeCodeAgent,
+    prompt: str,
+    chunk_idx: int,
+    stats: _Stats | None = None,
+) -> str:
+    """Drain orchestrator stream — logs every block when SUBAGENT_VERBOSITY=True."""
     parts: list[str] = []
     tag = f"chunk={chunk_idx}"
     async for msg in agent.run(prompt):
@@ -223,83 +282,33 @@ async def _run_agent(agent: ClaudeCodeAgent, prompt: str, chunk_idx: int) -> str
                     text = block.text.strip()
                     if text:
                         parts.append(block.text)
-                        logger.debug("[%s] orch.text: %s", tag, _truncate(text, 400))
+                        if SUBAGENT_VERBOSITY:
+                            logger.debug("[%s] orch.text: %s", tag, _truncate(text, 400))
                 elif isinstance(block, ThinkingBlock):
-                    logger.debug(
-                        "[%s] orch.thinking: %s",
-                        tag, _truncate(block.thinking, 400),
-                    )
+                    if SUBAGENT_VERBOSITY:
+                        logger.debug(
+                            "[%s] orch.thinking: %s",
+                            tag, _truncate(block.thinking, 400),
+                        )
                 elif isinstance(block, ToolUseBlock):
-                    logger.info(
-                        "[%s] dispatch %s id=%s input=%s",
-                        tag, block.name, block.id, _summarize_tool_input(block.input),
-                    )
+                    if SUBAGENT_VERBOSITY:
+                        logger.info(
+                            "[%s] dispatch %s id=%s input=%s",
+                            tag, block.name, block.id, _summarize_tool_input(block.input),
+                        )
         elif isinstance(msg, UserMessage):
             # Tool results stream back as user messages.
             content = msg.content
             if isinstance(content, list):
                 for block in content:
-                    if isinstance(block, ToolResultBlock):
+                    if isinstance(block, ToolResultBlock) and SUBAGENT_VERBOSITY:
                         logger.info(
                             "[%s] result id=%s err=%s body=%s",
                             tag, block.tool_use_id, bool(block.is_error),
                             _truncate(_stringify_tool_result(block.content), 600),
                         )
         elif isinstance(msg, ResultMessage):
+            if stats is not None:
+                stats.record(msg)
             break
     return "".join(parts)
-
-
-def _summarize_tool_input(payload) -> str:
-    try:
-        return _truncate(json.dumps(payload, ensure_ascii=False), 300)
-    except (TypeError, ValueError):
-        return _truncate(str(payload), 300)
-
-
-def _stringify_tool_result(content) -> str:
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        out: list[str] = []
-        for block in content:
-            text = getattr(block, "text", None)
-            if text is not None:
-                out.append(text)
-            else:
-                out.append(str(block))
-        return "\n".join(out)
-    return str(content)
-
-
-def _truncate(s: str, n: int) -> str:
-    s = s.replace("\n", " ⏎ ")
-    return s if len(s) <= n else s[:n] + f"…[+{len(s) - n}]"
-
-
-def _parse_resolutions(text: str) -> list[dict] | None:
-    if not text:
-        return None
-    fenced = re.search(r"```(?:json)?\s*(\[.*?\])\s*```", text, re.DOTALL)
-    payload = fenced.group(1) if fenced else None
-    if payload is None:
-        start = text.find("[")
-        end = text.rfind("]")
-        if start == -1 or end == -1 or end <= start:
-            return None
-        payload = text[start : end + 1]
-    try:
-        data = json.loads(payload)
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(data, list):
-        return None
-    return [d for d in data if isinstance(d, dict)]
-
-
-def _chunk(items: list, size: int):
-    out: list[list] = []
-    for i in range(0, len(items), size):
-        chunk = [(i + j, item) for j, item in enumerate(items[i : i + size])]
-        out.append(chunk)
-    return out

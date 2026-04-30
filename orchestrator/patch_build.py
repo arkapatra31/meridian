@@ -36,6 +36,7 @@ from graph_engine.utils.db_utils import persist_graph, record_graph_version
 from hybrid_parsing.codebase_parser import parse_files
 from hybrid_parsing.codebase_parser.models import ParseResult
 from hybrid_parsing.surgical_agent import resolve_ambiguous
+from hybrid_parsing.workload_reducer import reduce_workload
 from hybrid_parsing.tree_indexer import (
     load_tree_as_parse_result,
     mutate_tree,
@@ -198,7 +199,9 @@ async def _refresh_graph(
     delta_ambig_count = len(new_ambig)
     merged.ambiguous = new_ambig
     if new_ambig:
-        merged = await resolve_ambiguous(merged)
+        merged = await run_in_threadpool(reduce_workload, merged)
+        if merged.ambiguous:
+            merged = await resolve_ambiguous(merged)
     resolved_count = delta_ambig_count - len(merged.ambiguous)
     merged.ambiguous.extend(carry_over)
 

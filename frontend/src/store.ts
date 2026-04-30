@@ -18,7 +18,7 @@ interface GraphStore {
 
   loadGraph: (id: string, token: string) => Promise<void>
   listGraphs: (token: string) => Promise<void>
-  syncRepo: (url: string, pat: string, branch: string | undefined, token: string) => Promise<string | null>
+  syncRepo: (url: string, pat: string, branch: string, token: string) => Promise<string | null>
   deleteGraph: (id: string, token: string) => Promise<void>
   setSelectedNode: (node: GraphNode | null) => void
   setSearchQuery: (q: string) => void
@@ -74,7 +74,7 @@ export const useGraphStore = create<GraphStore>((set) => ({
     }
   },
 
-  syncRepo: async (url: string, pat: string, branch: string | undefined, token: string) => {
+  syncRepo: async (url: string, pat: string, branch: string, token: string) => {
     set({ syncLoading: true, syncError: null })
     try {
       const res = await fetch('/repos/sync', {
@@ -84,7 +84,7 @@ export const useGraphStore = create<GraphStore>((set) => ({
           Authorization: `Bearer ${token}`,
           'X-GitHub-PAT': pat,
         },
-        body: JSON.stringify({ url, branch: branch || null }),
+        body: JSON.stringify({ url, branch }),
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
