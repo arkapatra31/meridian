@@ -51,7 +51,7 @@ The Anthropic SDK wrappers used by C2 / C4b / C6 live in `sdk/` — `sdk/claude_
 - `GET /repos` — list the caller's graphs (metadata only, no payload) (`api/routes/graphs.py`)
 - `GET /graph?graph_id=...` — fetch the full graph payload (nodes + edges) by id
 - `DELETE /repos/{graph_id}` — evict graph + tree + history + clone record + on-disk cache directory; sync_runs are intentionally left as orphaned audit rows
-- `WS /playground/{graph_id}?token=<JWT>&query=<initial>&agentic=<bool>` — multi-turn streaming QnA (C6). The route in `api/routes/graphs.py` is a thin shell; all session orchestration lives in `orchestrator/qna_chat.py::run_playground_session`. JWT goes via the `token` query param because browsers can't set headers on WS
+- `WS /playground/{graph_id}?token=<JWT>&query=<initial>` — multi-turn streaming QnA (C6). The route in `api/routes/graphs.py` is a thin shell; all session orchestration lives in `orchestrator/qna_chat.py::run_playground_session`. JWT goes via the `token` query param because browsers can't set headers on WS
 
 All `/repos`, `/graph` routes require a valid JWT. Users can only access their own graphs (every query is scoped by `user_id` from the JWT via `api/deps.py::get_current_user_id`). The `/playground/{graph_id}` WS performs the same scoping inside `orchestrator.qna_chat`.
 
