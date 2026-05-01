@@ -272,3 +272,7 @@ volumes:
 ## Status
 
 Early-stage. Proprietary — All Rights Reserved. See [LICENSE](LICENSE).
+
+---
+
+**Author:** Arka Patra

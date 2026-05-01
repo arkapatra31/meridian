@@ -1,5 +1,5 @@
 """Graph-resource routes — `GET /repos` (list), `GET /graph` (fetch by id),
-`DELETE /repos/{graph_id}` (evict).
+`DELETE /repos/{graph_id}` (evict), `WS /playground/{graph_id}` (C6 QnA).
 
 Lives in its own module so the build/sync surface (repos.py) and the read
 surface evolve independently.
@@ -8,12 +8,13 @@ surface evolve independently.
 import shutil
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, status
 from sqlalchemy import select, text
 
 from db.database import get_session
 from db.entities import Graph
 from db.entities.repo_clone import RepoClone
+from orchestrator.qna_chat import run_playground_session
 
 from ..deps import get_current_user_id
 from ..schemas.graph import GraphResponse, GraphSummary
@@ -152,3 +153,21 @@ async def evict_graph(
 
     if clone_path and clone_path.exists():
         shutil.rmtree(clone_path, ignore_errors=True)
+
+
+@router.websocket("/playground/{graph_id}")
+async def playground_ws(
+    websocket: WebSocket,
+    graph_id: str,
+    token: str = Query(..., description="JWT (browsers can't set headers on WS)"),
+    query: str | None = Query(None, description="Optional initial question"),
+) -> None:
+    """Multi-turn streaming QnA over a graph. Service logic lives in
+    `orchestrator.qna_chat.run_playground_session`.
+    """
+    await run_playground_session(
+        websocket,
+        graph_id,
+        token=token,
+        initial_query=query,
+    )

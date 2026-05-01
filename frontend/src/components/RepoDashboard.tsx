@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, FormEvent } from 'react'
 import { useAuthStore } from '@/authStore'
 import { useGraphStore } from '@/store'
+import { usePlaygroundStore } from '@/playgroundStore'
 import ThemeToggle from '@/components/ThemeToggle'
 import type { GraphSummary } from '@/types'
 
@@ -28,6 +29,7 @@ function stripGit(url: string): string {
 export default function RepoDashboard() {
   const { token, user, logout } = useAuthStore()
   const { graphs, graphsLoading, graphsError, syncLoading, syncError, listGraphs, syncRepo, loadGraph, deleteGraph } = useGraphStore()
+  const openPlayground = usePlaygroundStore((s) => s.open)
 
   const [repoUrl, setRepoUrl]         = useState('')
   const [pat, setPat]                 = useState('')
@@ -93,6 +95,15 @@ export default function RepoDashboard() {
     setDeletingId(null)
   }
 
+  const handleChat = (g: GraphSummary) => {
+    if (!token) return
+    openPlayground({
+      graphId: g.graph_id,
+      repoLabel: stripGit(g.repo_url),
+      token,
+    })
+  }
+
   const isBuilding = syncLoading || !!buildingId
 
   return (
@@ -145,7 +156,7 @@ export default function RepoDashboard() {
                 Graph built successfully — ready to explore below.
               </div>
             )}
-            <form onSubmit={handleSync} className="flex flex-col gap-4">
+            <form onSubmit={handleSync} className="flex flex-col gap-4" autoComplete="off">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5 sm:col-span-2">
                   <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
@@ -153,12 +164,19 @@ export default function RepoDashboard() {
                   </label>
                   <input
                     type="url"
+                    name="meridian-repo-url"
                     value={repoUrl}
                     onChange={(e) => setRepoUrl(e.target.value)}
                     placeholder="https://github.com/owner/repo"
                     className="w-full rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:border-indigo-500/50 transition-colors font-mono disabled:opacity-50"
                     required
                     disabled={isBuilding}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    data-1p-ignore
+                    data-lpignore="true"
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -167,12 +185,19 @@ export default function RepoDashboard() {
                   </label>
                   <input
                     type="password"
+                    name="meridian-github-pat"
                     value={pat}
                     onChange={(e) => setPat(e.target.value)}
                     placeholder="ghp_xxxxxxxxxxxx"
                     className="w-full rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:border-indigo-500/50 transition-colors font-mono disabled:opacity-50"
                     required
                     disabled={isBuilding}
+                    autoComplete="new-password"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    data-1p-ignore
+                    data-lpignore="true"
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -181,12 +206,19 @@ export default function RepoDashboard() {
                   </label>
                   <input
                     type="text"
+                    name="meridian-branch"
                     value={branch}
                     onChange={(e) => setBranch(e.target.value)}
                     placeholder="main"
                     className="w-full rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:border-indigo-500/50 transition-colors font-mono disabled:opacity-50"
                     required
                     disabled={isBuilding}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    data-1p-ignore
+                    data-lpignore="true"
                   />
                 </div>
               </div>
@@ -254,6 +286,7 @@ export default function RepoDashboard() {
                   graph={g}
                   onOpen={handleOpenGraph}
                   onDelete={handleDelete}
+                  onChat={handleChat}
                   isNew={g.graph_id === justReadyId}
                   isDeleting={deletingId === g.graph_id}
                 />
@@ -803,10 +836,11 @@ function StageIcon({ type, state }: { type: string; state: 'done' | 'active' | '
 }
 
 
-function GraphCard({ graph, onOpen, onDelete, isNew, isDeleting }: {
+function GraphCard({ graph, onOpen, onDelete, onChat, isNew, isDeleting }: {
   graph: GraphSummary
   onOpen: (id: string) => void
   onDelete: (id: string) => void
+  onChat: (graph: GraphSummary) => void
   isNew?: boolean
   isDeleting?: boolean
 }) {
@@ -885,15 +919,28 @@ function GraphCard({ graph, onOpen, onDelete, isNew, isDeleting }: {
       <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-white/5">
         <p className="text-xs text-gray-400 dark:text-gray-700">Updated {updatedAgo}</p>
         {graph.status === 'READY' ? (
-          <button
-            onClick={() => onOpen(graph.graph_id)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-colors"
-          >
-            View Graph
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onChat(graph)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-500 dark:text-indigo-300 hover:bg-indigo-500/10 text-xs font-semibold transition-colors"
+              title="Open QnA Playground"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              Chat
+            </button>
+            <button
+              onClick={() => onOpen(graph.graph_id)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-colors"
+            >
+              View Graph
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
         ) : isBuilding ? (
           <span className="flex items-center gap-1.5 text-xs text-amber-400">
             <span className="w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
