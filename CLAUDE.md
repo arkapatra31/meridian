@@ -186,6 +186,7 @@ The orchestrator persists the build result via `graph_engine/utils/db_utils.py::
 - `RepoDashboard` — submit URL + PAT, list graphs, drive `POST /repos/sync` and poll for status (WebSocket-driven progress is still TODO)
 - `GraphCanvas` — 3D force graph, semantic zoom is partial
 - `NodeSidebar` — node detail panel
+- `PlaygroundLauncher` / `PlaygroundChat` — opens a `WS /playground/{graph_id}` connection and drives the multi-turn streaming chat (deltas, thinking indicator, error states)
 - `SearchBar`, `StatsBar`, `ThemeToggle`
 
 State stores: `authStore.ts` (JWT), `store.ts` (graph data), `themeStore.ts`.

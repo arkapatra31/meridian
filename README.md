@@ -7,10 +7,10 @@ Point Meridian at any GitHub repository and get back an interactive, queryable k
 ## Features
 
 - **Zero install for end users** — just provide a GitHub URL (and a PAT for private repos).
-- **Two-pass parsing** — tree-sitter for deterministic AST extraction across 25 languages, agent reasoning for surgical resolution of ambiguous edges.
+- **Three-pass parsing** — tree-sitter (Pass 1) for deterministic AST extraction across 25 languages, a symbol-index workload reducer (Pass 1.5) that resolves the easy cross-file refs without an LLM call, and agent reasoning (Pass 2) for surgical resolution of what's left.
 - **Differential updates** — incremental graph patches in seconds via a built-in diff engine; no full rebuilds.
-- **Graph-grounded QnA** — answers cite specific nodes and files, not hallucinated references.
-- **Interactive visualization** — WebGL-rendered force graph with semantic zoom, community coloring, and confidence-weighted edges.
+- **Graph-grounded QnA** — multi-turn streaming chat with answers that cite specific nodes and files, not hallucinated references.
+- **Interactive visualization** — 3D WebGL-rendered force graph with semantic zoom, community coloring, and confidence-weighted edges.
 - **Rate-limit-safe ingestion** — bulk file fetching uses `git clone` via subprocess (git protocol, zero API calls); GitHub MCP is used only for metadata enrichment.
 
 ---
@@ -28,8 +28,9 @@ flowchart TD
     C3a["C3a Git CLI"]
     C3b["C3b MCP"]
 
-    C4["<b>C4 — Hybrid parser</b><br/>Tree-sitter + Agent"]
+    C4["<b>C4 — Hybrid parser</b><br/>Tree-sitter + Reducer + Agent"]
     C4a["C4a TS"]
+    C4ab["C4ab Reducer"]
     C4b["C4b Agent"]
     C4c["C4c Index"]
 
@@ -51,6 +52,7 @@ flowchart TD
     C3 --> C3b
 
     C4 --> C4a
+    C4 --> C4ab
     C4 --> C4b
     C4 --> C4c
 
@@ -75,7 +77,7 @@ flowchart TD
     class C1 gateway
     class C2 orchestrate
     class C3,C3a,C3b ingestion
-    class C4,C4a,C4b,C4c parser
+    class C4,C4a,C4ab,C4b,C4c parser
     class C5,C5a,C5b engine
     class C6,C7 output
     class C8 persistence
@@ -87,9 +89,9 @@ _Solid arrows = synchronous calls. Dashed arrows = persistence reads/writes; eve
 
 | Component | Technology | Role |
 | ----------- | ---------- | ------ |
-| C1: API Gateway | FastAPI | REST endpoints, WebSocket build progress, serves React SPA |
-| C3a: Git Client | git CLI (subprocess) | Initial clone + pull via git protocol — zero API rate limit impact. Writes ephemeral clones to `/var/meridian/cache/{repo_hash}/` |
-| C3b: GitHub MCP | GitHub MCP Server | Metadata only: diffs, PRs, issues, contributors |
+| C1: API Gateway | FastAPI | REST endpoints, WebSocket QnA, serves React SPA |
+| C3a: Git Client | git CLI (subprocess) | Initial clone + pull via git protocol — zero API rate limit impact. Writes ephemeral clones to `ingestion_layer/repo_cache/codebase/<repo>/` (override via `CACHE_ROOT`) |
+| C3b: GitHub MCP | GitHub MCP Server | Metadata only: commits between SHAs, PRs, issues |
 
 **Hybrid ingestion model (rate-limit protection):**
 
@@ -104,22 +106,25 @@ _Solid arrows = synchronous calls. Dashed arrows = persistence reads/writes; eve
 
 | Component | Technology | Role |
 | ----------- | ---------- | ------ |
-| C2: Orchestrator | Claude Code Agent SDK | Coordinates pipeline; makes build vs. update decisions |
-| C4a: Tree-sitter (Pass 1) | py-tree-sitter | Deterministic AST extraction across 25 languages → `EXTRACTED` edges |
+| C2: Orchestrator | Plain async Python + Agent SDK (inside C4b) | Coordinates pipeline; makes FULL vs PATCH decisions |
+| C4a: Tree-sitter (Pass 1) | `tree-sitter-language-pack` | Deterministic AST extraction across 25 languages → `EXTRACTED` edges |
+| C4ab: Workload Reducer (Pass 1.5) | Symbol-index reducer (no LLM) | Resolves easy cross-file refs via project-wide symbol index → `EXTRACTED` edges |
 | C4b: Agent Reasoning (Pass 2) | Agent SDK tools | Resolves ambiguous edges with grep/glob/read → `INFERRED` edges |
-| C4c: Tree Indexer | SQLAlchemy + SQLite | Persists the C4a+C4b parse tree to `trees`; mutated in place during PATCH |
+| C4c: Tree Indexer | SQLAlchemy + SQLite | Persists the C4a+C4ab+C4b parse tree to `trees`; mutated in place during PATCH |
 
-**Pass 1** extracts modules, classes, functions, methods, and all deterministic edges (imports, calls, contains, inherits, decorates) from raw ASTs. Ambiguous references are flagged for Pass 2.
+**Pass 1** extracts modules, classes, functions, methods, and all deterministic edges (imports, same-file calls, contains, inherits, decorates) from raw ASTs. Cross-file / dynamic refs are flagged as `AmbiguousRef`.
 
-**Pass 2** fires only for flagged edges. It uses `glob` to find candidate files, `grep` to locate definitions, and `read` to load specific line ranges — loading 2–3 files per resolution rather than the full repo. Clean codebases: ~10–15% of edges need agent resolution. Metaprogramming-heavy codebases: ~30–40%.
+**Pass 1.5** routes each `AmbiguousRef` through a language-specific reducer that builds a project-wide symbol index. Typical mixed-repo split: ~88% dropped (external/stdlib, no project match), ~10% resolved (unique cross-file matches), ~2% passed through to Pass 2.
+
+**Pass 2** fires only when refs survive Pass 1.5. It uses `glob` to find candidate files, `grep` to locate definitions, and `read` to load specific line ranges — loading 2–3 files per resolution rather than the full repo.
 
 ### Layer 3 — Graph
 
 | Component | Technology | Role |
 | ----------- | ---------- | ------ |
-| C5a: Graph Builder | NetworkX | Merges `EXTRACTED` + `INFERRED` edges into a unified graph |
-| C5b: Leiden Clustering | graspologic | Community detection on graph topology; no embeddings |
-| C8: Graph Store | SQLite (`meridian.db`) | Durable persistence for graphs and users |
+| C5a: Graph Builder | NetworkX (`MultiDiGraph`) | Merges `EXTRACTED` + `INFERRED` edges; synthesises external nodes for cross-repo endpoints |
+| C5b: Leiden Clustering | graspologic | Community detection on graph topology; no embeddings. Flags `is_god` (cross-community hubs) and `is_orphan` (isolates) |
+| C8: Graph Store | SQLite (`db/meridian.db`) | Six tables: `users`, `graphs`, `trees`, `repo_clones`, `sync_runs`, `graph_history` |
 
 **Node schema:**
 ```json
@@ -131,9 +136,9 @@ _Solid arrows = synchronous calls. Dashed arrows = persistence reads/writes; eve
   "line_start": 42,
   "line_end": 67,
   "language": "python",
-  "params": ["token: str"],
-  "docstring": "Validates a JWT token and returns the user payload.",
-  "community": 3
+  "community": 3,
+  "is_god": false,
+  "is_orphan": false
 }
 ```
 
@@ -156,63 +161,46 @@ Confidence levels: `EXTRACTED` (tree-sitter, high trust) · `INFERRED` (agent, m
 
 | Component | Technology | Role |
 | ----------- | ---------- | ------ |
-| C6: QnA Agent | ClaudeSDKClient | Answers questions grounded in a BFS-extracted subgraph (~2k tokens) |
-| C7: React Frontend | React + react-force-graph (WebGL) | Interactive graph visualization with semantic zoom |
+| C6: QnA Agent | ClaudeSDKClient (multi-turn streaming) | Multi-turn WebSocket chat grounded in graph context |
+| C7: React Frontend | React 18 + Vite + `react-force-graph-3d` (3D WebGL) + Zustand + Tailwind | Interactive 3D graph visualization with semantic zoom |
 
-**QnA flow:** BFS from keyword-matched nodes → 2-hop subgraph (~2k tokens) → single ClaudeSDKClient completion → answer with node/file citations. No tool loop needed; the graph is the context.
+**QnA flow:** Per turn, server-side retrieval composes three tools — `search_nodes` (keyword-score top-K seeds), `get_neighbours` (full inbound/outbound edges per seed), `get_community` (Leiden cluster members) — formats them as readable text, and injects as `<graph_context>` into a streaming `ClaudeSDKClient` session. Session is reused across turns over a single WebSocket so prior history stays in the model's context.
 
-**Frontend:** Force-directed WebGL layout (handles 5k+ nodes), Leiden community coloring, confidence-weighted edge thickness, semantic zoom (community super-nodes → god nodes → all labeled nodes), node sidebar with docstring + file link, QnA panel that highlights relevant subgraph nodes on answer.
+**Frontend:** 3D force-directed WebGL layout (`react-force-graph-3d`, handles 5k+ nodes), Leiden community coloring, confidence-weighted edge thickness, partial semantic zoom, node sidebar with file link, multi-turn QnA playground (`PlaygroundChat`) over `WS /playground/{graph_id}`.
 
 ---
 
 ## API Reference
 
-All `/repos` endpoints require `Authorization: Bearer <token>`.
+All `/repos` and `/graph` endpoints require `Authorization: Bearer <token>`. The PAT is passed per-request via the `X-GitHub-PAT` header on `/repos/sync` and is never stored.
 
 | Method | Path | Description |
 | -------- | ------ | ------------- |
 | `POST` | `/auth/register` | Create a user account |
-| `POST` | `/auth/login` | Authenticate; returns JWT token |
-| `POST` | `/repos` | Submit a repo for graph building |
-| `GET` | `/repos` | List authenticated user's graphs |
-| `GET` | `/repos/{graph_id}/graph` | Fetch the knowledge graph JSON |
-| `POST` | `/repos/{graph_id}/query` | Ask a QnA question |
-| `POST` | `/repos/{graph_id}/sync` | Trigger an incremental update |
-| `DELETE` | `/repos/{graph_id}` | Permanently delete a graph |
-| `WS` | `/repos/{graph_id}/status` | Stream build progress |
+| `POST` | `/auth/login` | Authenticate; returns 24h JWT |
+| `POST` | `/repos/sync` | Single dispatch — orchestrator picks FULL vs PATCH internally |
+| `GET` | `/repos` | List authenticated user's graphs (metadata only) |
+| `GET` | `/graph?graph_id=...` | Fetch the full knowledge graph JSON (nodes + edges) |
+| `DELETE` | `/repos/{graph_id}` | Permanently delete a graph (cascades tree, history, clone) |
+| `WS` | `/playground/{graph_id}?token=<JWT>&query=<initial>&agentic=<bool>` | Multi-turn streaming QnA |
+| `WS` | `/repos/{graph_id}/status` | Stream build progress (TODO — not yet wired) |
 
 ---
 
 ## Database Schema
 
-```sql
-CREATE TABLE users (
-    user_id         TEXT PRIMARY KEY,
-    email           TEXT UNIQUE NOT NULL,
-    display_name    TEXT NOT NULL,
-    github_username TEXT,
-    hashed_password TEXT NOT NULL,
-    role            TEXT DEFAULT 'member',
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_login_at   TIMESTAMP
-);
+Six tables — `users`, `graphs`, `trees`, `repo_clones`, `sync_runs`, `graph_history`. SQLAlchemy entities live in `db/entities/`; engine + session lifecycle in `db/database.py` (PRAGMA `foreign_keys=ON` on every connection).
 
-CREATE TABLE graphs (
-    graph_id        TEXT PRIMARY KEY,
-    user_id         TEXT NOT NULL REFERENCES users(user_id),
-    repo_url        TEXT NOT NULL,
-    branch          TEXT DEFAULT 'main',
-    last_commit_sha TEXT,
-    graph_data      TEXT,
-    status          TEXT DEFAULT 'building',
-    node_count      INTEGER DEFAULT 0,
-    edge_count      INTEGER DEFAULT 0,
-    community_count INTEGER DEFAULT 0,
-    error_message   TEXT,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
+| Table | Purpose | Key columns |
+| ------- | --------- | ------------- |
+| `users` | Account records | `user_id` (PK), `email` UNIQUE, bcrypt `password`, `role` |
+| `graphs` | Live graph payload (mutated in place across syncs) | `graph_id` (PK), `user_id` FK, `repo_clone_id` FK, `repo_url`, `branch`, `graph_data` JSON, `status` (`BUILDING`/`READY`/`ERROR`), counts. UNIQUE `(user_id, repo_url, branch)` |
+| `trees` | Durable parse tree from C4 (mutated in place during PATCH) | `tree_id` (PK), `graph_id` FK UNIQUE, `tree_data` JSON, `last_commit_sha`, `status` |
+| `repo_clones` | Clone tombstones — keep `last_commit_sha` after eviction so re-clone can resume | `repo_id` (PK, hash of repo_url), `user_id` FK, `path`, `evicted_at`. UNIQUE `(user_id, owner, repo, branch)` |
+| `sync_runs` | Per-build audit row | `run_id` (PK), `graph_id` FK, `mode` (`FULL`/`PATCH`), `status`, delta counts, timestamps |
+| `graph_history` | Immutable per-version snapshots of `graph_data` | `history_id` (PK), `graph_id` FK, `version` (monotonic), `run_id` FK, `graph_data` snapshot. UNIQUE `(graph_id, version)` |
+
+`DELETE /repos/{graph_id}` cascades the tree, history, and clone record (and rmtrees the cache directory) but intentionally leaves `sync_runs` rows orphaned as a historical audit trail.
 
 ---
 
@@ -220,34 +208,21 @@ CREATE TABLE graphs (
 
 | Storage | Location | Lifecycle | Loss impact |
 | --------- | ---------- | ----------- | ------------- |
-| Repo cache (ephemeral) | `/var/meridian/cache/{repo_hash}/` | TTL 7 days idle; LRU on disk budget | Zero — re-clone on next sync |
-| SQLite DB (durable) | `/var/meridian/db/meridian.db` | Persists until explicit DELETE | Catastrophic — back this up |
+| Repo cache (ephemeral) | `ingestion_layer/repo_cache/codebase/<repo>/` (override via `CACHE_ROOT`) | TTL + LRU disk-budget eviction (TODO) | Zero — re-clone on next sync |
+| SQLite DB (durable) | `db/meridian.db` | Persists until explicit `DELETE /repos/{graph_id}` | Catastrophic — back this up |
 
 ---
 
 ## Deployment
 
-Single Docker image; SQLite embedded (no separate DB server).
+Single Docker image. FastAPI serves both the API and the built React SPA from `api/static/`. SQLite is embedded (no separate DB server).
 
-```yaml
-# docker-compose.yml
-volumes:
-  - ./meridian-data:/var/meridian
-```
-
-```
-./meridian-data/
-├── db/
-│   └── meridian.db     ← durable: users + graphs (back this up)
-└── cache/              ← ephemeral: git clones (evictable)
-    ├── a1b2c3d4/
-    └── e5f6g7h8/
-```
+**Container contents:** FastAPI + uvicorn (C1, serves static SPA), git CLI (C3a), `tree-sitter-language-pack` (C4a), Agent SDK runtime (C4b), NetworkX + graspologic (C5), SQLite (C8).
 
 **External network dependencies:**
 - GitHub (git protocol) — clone + pull, not rate limited
-- GitHub REST API via MCP — metadata enrichment only, 5–20 calls per sync
-- Anthropic API — Agent SDK (orchestration + Pass 2) + ClaudeSDKClient (QnA)
+- GitHub REST API via MCP — metadata enrichment only, ≤20 calls per sync
+- Anthropic API (or AWS Bedrock when `CLAUDE_CODE_USE_BEDROCK=1`) — Agent SDK (Pass 2) + ClaudeSDKClient (QnA)
 
 ---
 
@@ -257,15 +232,15 @@ volumes:
 | ----------- | ------ |
 | git clone / pull | Free — git protocol |
 | Tree-sitter Pass 1 | Free — local, deterministic |
+| Workload reducer Pass 1.5 | Free — local symbol-index resolution |
 | Diff engine | Free — local git operations |
 | Graph builder + Leiden | Free — local CPU |
 | SQLite persistence | Free — embedded |
-| GitHub MCP metadata | ~10–25 API calls per sync (within 5,000/hr budget) |
-| Agent SDK Pass 2 | Token cost — per ambiguous edge |
-| Agent SDK orchestration | Token cost — pipeline coordination |
-| ClaudeSDKClient QnA | Token cost — per user query |
+| GitHub MCP metadata | ≤20 API calls per sync (within 5,000/hr budget) |
+| Agent SDK Pass 2 | Token cost — per ambiguous edge that survives Pass 1.5 |
+| ClaudeSDKClient QnA | Token cost — per user turn (graph context injected server-side) |
 
-**Optimization principle:** Tree-sitter handles ~80% of edges for free. Agent tokens burn only on the ~20% that genuinely need reasoning. On incremental syncs, only changed-file edges incur agent cost.
+**Optimization principle:** Pass 1 (tree-sitter) and Pass 1.5 (reducer) together resolve the vast majority of edges for free — the reducer alone drops ~88% of ambiguous refs and resolves another ~10% via deterministic symbol matching. Agent tokens burn only on the ~2% that genuinely need reasoning. On incremental syncs, only changed-file edges incur agent cost.
 
 ---
 
