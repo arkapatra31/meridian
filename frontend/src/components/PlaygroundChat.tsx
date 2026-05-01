@@ -169,11 +169,7 @@ export default function PlaygroundChat() {
           ))}
 
           {awaiting && messages[messages.length - 1]?.role === 'user' && (
-            <div className="flex items-center gap-2 text-xs text-gray-500 px-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" style={{ animationDelay: '0.15s' }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" style={{ animationDelay: '0.3s' }} />
-            </div>
+            <MeridianThinking />
           )}
         </div>
 
@@ -210,6 +206,86 @@ export default function PlaygroundChat() {
           onConfirm={confirmClose}
         />
       )}
+    </div>
+  )
+}
+
+
+const THINKING_PHRASES = [
+  'Traversing',
+  'Hopping',
+  'Spelunking',
+  'Triangulating',
+  'Sleuthing',
+  'Probing',
+  'Mapping',
+  'Charting',
+  'Routing',
+  'Tracing',
+  'Decoding',
+  'Bridging',
+  'Surveying',
+  'Resolving',
+  'Untangling',
+  'Wayfinding',
+  'Crawling',
+  'Sniffing',
+  'Pinpointing',
+  'Pondering',
+] as const
+
+function MeridianThinking() {
+  const order = useMemo(() => {
+    const arr = [...THINKING_PHRASES]
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]]
+    }
+    return arr
+  }, [])
+
+  const [idx, setIdx] = useState(0)
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setIdx((i) => (i + 1) % order.length)
+    }, 1700)
+    return () => clearInterval(t)
+  }, [order.length])
+
+  const phrase = order[idx]
+
+  return (
+    <div className="meridian-thinking" aria-live="polite">
+      <div className="meridian-thinking-stage">
+        <span className="meridian-sub" aria-hidden="true">
+          <svg viewBox="0 0 28 38" fill="none">
+            <defs>
+              <linearGradient id="msub-beam" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor="rgba(255, 244, 196, 0.85)" />
+                <stop offset="55%"  stopColor="rgba(199, 210, 254, 0.32)" />
+                <stop offset="100%" stopColor="rgba(199, 210, 254, 0)"    />
+              </linearGradient>
+            </defs>
+            {/* searchlight cone */}
+            <path d="M10.5 11 L17.5 11 L25 38 L3 38 Z" fill="url(#msub-beam)" />
+            {/* hull */}
+            <ellipse cx="14" cy="8" rx="10" ry="3.4" fill="currentColor" />
+            {/* conning tower */}
+            <rect x="11.5" y="3.6" width="5" height="3" rx="0.6" fill="currentColor" />
+            {/* periscope */}
+            <line x1="14" y1="0.8" x2="14" y2="3.6" stroke="currentColor" strokeWidth={1} strokeLinecap="round" />
+            {/* porthole */}
+            <circle cx="9.5" cy="8" r="1" fill="rgba(13, 17, 23, 0.65)" />
+            {/* propeller */}
+            <line className="msub-prop" x1="2" y1="8" x2="4.5" y2="8"
+              stroke="currentColor" strokeWidth={1.3} strokeLinecap="round" />
+          </svg>
+        </span>
+        <span key={phrase} className="meridian-thinking-phrase">
+          {phrase}…
+        </span>
+      </div>
     </div>
   )
 }

@@ -56,3 +56,104 @@ html:not(.dark) ::-webkit-scrollbar-thumb {
 .glow-input:focus {
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5), 0 0 20px rgba(99, 102, 241, 0.15);
 }
+
+/* Meridian "thinking" indicator — a tiny submarine glides across the
+   rotating word, casting a searchlight beam down onto the letters. The
+   text's own bright band sweeps in sync via background-clip: text, so
+   the cone's tip and the lit-up letters appear to track together. */
+@keyframes meridianPhraseIn {
+  0%   { opacity: 0; transform: translateY(2px); }
+  100% { opacity: 1; transform: translateY(0);   }
+}
+
+@keyframes meridianSubGlide {
+  0%   { left: -26px;             transform: translateY(0);    opacity: 0; }
+  14%  { left: 0;                 transform: translateY(-1px); opacity: 1; }
+  50%  {                          transform: translateY(-2px);             }
+  86%  { left: 100%;              transform: translateY(-1px); opacity: 1; }
+  100% { left: calc(100% + 6px);  transform: translateY(0);    opacity: 0; }
+}
+
+@keyframes meridianSpotlight {
+  0%   { background-position: -110% 0; }
+  100% { background-position:  210% 0; }
+}
+
+.meridian-thinking {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 4px;
+  font-size: 12px;
+}
+
+.meridian-thinking-stage {
+  position: relative;
+  display: inline-block;
+  padding-top: 22px;
+}
+
+.meridian-sub {
+  position: absolute;
+  top: 0;
+  left: -26px;
+  width: 24px;
+  height: 38px;
+  color: rgb(129, 140, 248);
+  pointer-events: none;
+  filter: drop-shadow(0 0 5px rgba(129, 140, 248, 0.45));
+  animation: meridianSubGlide 2.8s ease-in-out infinite;
+}
+
+.meridian-sub svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.meridian-sub .msub-prop {
+  transform-origin: 3.25px 8px;
+  transform-box: fill-box;
+  animation: spin 0.4s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.meridian-thinking-phrase {
+  position: relative;
+  display: inline-block;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  background-image: linear-gradient(
+    100deg,
+    rgba(107, 114, 128, 0.55) 0%,
+    rgba(107, 114, 128, 0.55) 38%,
+    rgba(224, 231, 255, 1)    47%,
+    rgba(255, 255, 255, 1)    50%,
+    rgba(224, 231, 255, 1)    53%,
+    rgba(107, 114, 128, 0.55) 62%,
+    rgba(107, 114, 128, 0.55) 100%
+  );
+  background-size: 250% 100%;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation:
+    meridianPhraseIn 0.35s ease-out,
+    meridianSpotlight 2.8s ease-in-out infinite;
+}
+
+html.dark .meridian-thinking-phrase {
+  background-image: linear-gradient(
+    100deg,
+    rgba(156, 163, 175, 0.45) 0%,
+    rgba(156, 163, 175, 0.45) 38%,
+    rgba(199, 210, 254, 1)    47%,
+    rgba(255, 255, 255, 1)    50%,
+    rgba(199, 210, 254, 1)    53%,
+    rgba(156, 163, 175, 0.45) 62%,
+    rgba(156, 163, 175, 0.45) 100%
+  );
+}
