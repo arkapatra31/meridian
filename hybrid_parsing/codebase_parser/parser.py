@@ -51,6 +51,14 @@ _SKIP_DIRS: frozenset[str] = frozenset(
         "out",
         "bin",
         "obj",
+        "test",
+        "tests",
+        "__tests__",
+        "spec",
+        "specs",
+        "e2e",
+        "integration_tests",
+        "functional_tests",
     }
 )
 
@@ -93,48 +101,7 @@ def parse_codebase(repo: str) -> ParseResult:
     result = ParseResult(repo=repo, root=str(root))
 
     for path in _iter_source_files(root):
-        rel = path.relative_to(root).as_posix()
-        lang = detect_language(path)
-        if lang is None:
-            result.files_skipped += 1
-            continue
-
-        walker = WALKERS.get(lang)
-        if walker is None:
-            # Recognized extension, no walker yet — count as skipped, not an error.
-            result.files_skipped += 1
-            continue
-
-        try:
-            stat = path.stat()
-        except OSError as exc:
-            result.errors.append(f"{rel}: stat failed — {exc}")
-            result.files_skipped += 1
-            continue
-        if stat.st_size > _MAX_FILE_BYTES:
-            result.files_skipped += 1
-            continue
-
-        try:
-            source = path.read_bytes()
-        except OSError as exc:
-            result.errors.append(f"{rel}: read failed — {exc}")
-            result.files_skipped += 1
-            continue
-
-        try:
-            nodes, edges, ambiguous = walker(rel, source, root)
-        except Exception as exc:  # tree-sitter / walker bug — don't kill the run
-            logger.exception("parse failed for %s", rel)
-            result.errors.append(f"{rel}: parse failed — {exc}")
-            result.files_skipped += 1
-            continue
-
-        result.nodes.extend(nodes)
-        result.edges.extend(edges)
-        result.ambiguous.extend(ambiguous)
-        result.files_parsed += 1
-        result.languages[lang] = result.languages.get(lang, 0) + 1
+        _parse_one_file(path, root, result)
 
     logger.info(
         "codebase_parser: %s parsed=%d skipped=%d nodes=%d edges=%d ambiguous=%d",
@@ -148,9 +115,104 @@ def parse_codebase(repo: str) -> ParseResult:
     return result
 
 
+def parse_files(repo: str, files: list[str]) -> ParseResult:
+    """Parse only the given files (relative POSIX paths under the repo root).
+
+    Used by the PATCH path: takes the `added ∪ modified ∪ renamed-to` set
+    from `git diff` and runs the same per-file walker dispatch as
+    `parse_codebase`, just over an explicit list. Missing or unsupported
+    files are counted as skipped, not raised — same contract as the
+    directory walk.
+    """
+    root = resolve_repo_path(repo)
+    result = ParseResult(repo=repo, root=str(root))
+
+    for rel in files:
+        path = (root / rel).resolve()
+        # Reject paths that escape the repo root (e.g. `../foo`); also catches
+        # absolute paths someone fed in by mistake.
+        if root not in path.parents and path != root:
+            result.errors.append(f"{rel}: refused (escapes repo root)")
+            result.files_skipped += 1
+            continue
+        if not path.is_file():
+            # Includes the deletion-race case — caller should feed only
+            # `added ∪ modified ∪ renamed-to`, but a file may still be gone.
+            result.files_skipped += 1
+            continue
+        _parse_one_file(path, root, result)
+
+    logger.info(
+        "codebase_parser: %s (delta) parsed=%d skipped=%d nodes=%d edges=%d ambiguous=%d",
+        repo,
+        result.files_parsed,
+        result.files_skipped,
+        len(result.nodes),
+        len(result.edges),
+        len(result.ambiguous),
+    )
+    return result
+
+
+def _parse_one_file(path: Path, root: Path, result: ParseResult) -> None:
+    """Dispatch a single file through its language walker. Mutates `result`."""
+    rel = path.relative_to(root).as_posix()
+    lang = detect_language(path)
+    if lang is None:
+        result.files_skipped += 1
+        return
+
+    walker = WALKERS.get(lang)
+    if walker is None:
+        # Recognized extension, no walker yet — count as skipped, not an error.
+        result.files_skipped += 1
+        return
+
+    try:
+        stat = path.stat()
+    except OSError as exc:
+        result.errors.append(f"{rel}: stat failed — {exc}")
+        result.files_skipped += 1
+        return
+    if stat.st_size > _MAX_FILE_BYTES:
+        result.files_skipped += 1
+        return
+
+    try:
+        source = path.read_bytes()
+    except OSError as exc:
+        result.errors.append(f"{rel}: read failed — {exc}")
+        result.files_skipped += 1
+        return
+
+    try:
+        nodes, edges, ambiguous = walker(rel, source, root)
+    except Exception as exc:  # tree-sitter / walker bug — don't kill the run
+        logger.exception("parse failed for %s", rel)
+        result.errors.append(f"{rel}: parse failed — {exc}")
+        result.files_skipped += 1
+        return
+
+    result.nodes.extend(nodes)
+    result.edges.extend(edges)
+    result.ambiguous.extend(ambiguous)
+    result.files_parsed += 1
+    result.languages[lang] = result.languages.get(lang, 0) + 1
+
+
 def _iter_source_files(root: Path) -> Iterator[Path]:
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS and not d.startswith(".")]
+        dirnames[:] = [
+            d for d in dirnames
+            if d not in _SKIP_DIRS
+            and not d.startswith(".")
+            and "test" not in d.lower()
+            and ".properties" not in d.lower()
+            and ".yaml" not in d.lower()
+            and ".yml" not in d.lower()
+            and ".json" not in d.lower()
+            and ".xml" not in d.lower()
+        ]
         for fname in filenames:
             if fname.startswith("."):
                 continue

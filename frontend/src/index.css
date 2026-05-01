@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #f6f8fa;
+  color: #1f2328;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+html.dark body, html.dark #root {
+  background: #0d1117;
+  color: #e6edf3;
+}
+
+/* Scrollbar styling for sidebars */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 2px;
+}
+
+html:not(.dark) ::-webkit-scrollbar-thumb {
+  background: #c1c7ce;
+}
+
+/* Graph canvas fills its container */
+.graph-container canvas {
+  display: block;
+}
+
+/* Slide-in animation for sidebar */
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+.slide-in-right {
+  animation: slideInRight 0.2s ease-out forwards;
+}
+
+/* Input glow on focus */
+.glow-input:focus {
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5), 0 0 20px rgba(99, 102, 241, 0.15);
+}

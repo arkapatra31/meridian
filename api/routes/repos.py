@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from orchestrator.orchestrator import sync_repo
 from ingestion_layer.repo_cache.clone_repo import CloneError
 
+from ..deps import get_current_user_id
 from ..schemas import SyncRequest, SyncResponse
 
 router = APIRouter(prefix="/repos", tags=["repos"])
@@ -21,6 +22,7 @@ async def sync(
         alias="X-GitHub-PAT",
         description="GitHub Personal Access Token (passed per-request, never stored)",
     ),
+    user_id: str = Depends(get_current_user_id),
 ) -> SyncResponse:
     url = str(body.url)
 
@@ -29,6 +31,7 @@ async def sync(
             repo_url=url,
             pat=x_github_pat,
             branch=body.branch,
+            user_id=user_id,
         )
     except ValueError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
