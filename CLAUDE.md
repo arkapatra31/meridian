@@ -51,11 +51,10 @@ The Anthropic SDK wrappers used by C2 / C4b / C6 live in `sdk/` — `sdk/claude_
 - `GET /repos` — list the caller's graphs (metadata only, no payload) (`api/routes/graphs.py`)
 - `GET /graph?graph_id=...` — fetch the full graph payload (nodes + edges) by id
 - `DELETE /repos/{graph_id}` — evict graph + tree + history + clone record + on-disk cache directory; sync_runs are intentionally left as orphaned audit rows
+- `GET /graph/{graph_id}/skill?tool=<claude_code|cursor|copilot|windsurf>` — generate and download a tool-specific context file baked from the graph (C6 skill generator). Requires `READY` status. Returns `Content-Disposition: attachment`. Logic lives in `playground/skill_generator.py`.
 - `WS /playground/{graph_id}?token=<JWT>&query=<initial>` — multi-turn streaming QnA (C6). The route in `api/routes/graphs.py` is a thin shell; all session orchestration lives in `orchestrator/qna_chat.py::run_playground_session`. JWT goes via the `token` query param because browsers can't set headers on WS
 
 All `/repos`, `/graph` routes require a valid JWT. Users can only access their own graphs (every query is scoped by `user_id` from the JWT via `api/deps.py::get_current_user_id`). The `/playground/{graph_id}` WS performs the same scoping inside `orchestrator.qna_chat`.
-
-**TODO:** `WS /repos/{graph_id}/status` (build progress stream) is not yet wired.
 
 ### C2 — Orchestrator
 
@@ -156,6 +155,7 @@ The orchestrator persists the build result via `graph_engine/utils/db_utils.py::
 
 **Modules:**
 - `playground/config.py::QnaConfig` — tuning knobs. `top_k` (seeds per turn, env `QNA_TOP_K`) and `max_turns` (env `QNA_MAX_TURNS`).
+- `playground/skill_generator.py` — generates tool-specific context files from a graph payload. Entry points: `generate_skill_file(graph_data, *, repo_url, branch, graph_id, last_commit_sha, tool)` and `skill_filename(repo_url, tool)`. Supported tools: `claude_code` (`.claude/commands/<slug>.md` with slash-command frontmatter), `cursor` (`.cursor/rules/<slug>-context.mdc` with MDC frontmatter), `copilot` (`.github/copilot-instructions.md`, always-on plain markdown), `windsurf` (`.windsurfrules`, always-on plain markdown). Each file bakes in the graph summary, hub nodes, community clusters, language breakdown, and relationship type counts.
 - `playground/tools/` — retrieval logic, one file per tool:
   - `search_nodes.py` — keyword-scores every node, returns top-K seeds with pre-fetched immediate neighbours.
   - `get_neighbours.py` — given a node ID, returns all inbound/outbound edges with neighbour metadata; fuzzy-matches on name if the exact ID is not found.
@@ -183,15 +183,15 @@ The orchestrator persists the build result via `graph_engine/utils/db_utils.py::
 
 **Components (`frontend/src/components/`):**
 - `LoginPage` / `RegisterPage` — auth flow against `/auth/*`
-- `RepoDashboard` — submit URL + PAT, list graphs, drive `POST /repos/sync` and poll for status (WebSocket-driven progress is still TODO)
-- `GraphCanvas` — 3D force graph, semantic zoom is partial
+- `RepoDashboard` — submit URL + PAT, list graphs, drive `POST /repos/sync`, poll for status (3 s interval + elapsed-time stage heuristic), and host the skill-file download modal
+- `GraphCanvas` — 3D force graph, semantic zoom (partial)
 - `NodeSidebar` — node detail panel
 - `PlaygroundLauncher` / `PlaygroundChat` — opens a `WS /playground/{graph_id}` connection and drives the multi-turn streaming chat (deltas, thinking indicator, error states)
 - `SearchBar`, `StatsBar`, `ThemeToggle`
 
-State stores: `authStore.ts` (JWT), `store.ts` (graph data), `themeStore.ts`.
+The skill-file download flow lives inside `RepoDashboard`: a per-graph "Download for your AI tool" button opens a modal with a tool picker (Claude Code / Cursor / Copilot / Windsurf), shows the placement path, and calls `GET /graph/{graph_id}/skill?tool=<id>` to fetch and save the file.
 
-**TODO (per `.TODO`):** WebSocket-driven progress, full semantic zoom (community super-nodes at low zoom, god nodes + boundaries at mid).
+State stores: `authStore.ts` (JWT), `store.ts` (graph data), `themeStore.ts`.
 
 ### C8 — Persistence
 
@@ -244,7 +244,7 @@ Client → C1 → C2 (has_active_graph → True)
 
 **`repo_clones`** — `repo_id` (PK, hash of repo_url), `user_id` FK (ON DELETE CASCADE), `owner`, `repo`, `repo_url`, `branch`, `path`, `last_commit_sha`, `size_bytes`, `cloned_at`, `last_accessed_at`, `evicted_at`. UNIQUE `(user_id, owner, repo, branch)`. Rows are kept as tombstones after eviction so a re-clone can resume from `last_commit_sha`.
 
-**`sync_runs`** — `run_id` (UUID, PK), `graph_id` FK (ON DELETE CASCADE), `mode` (`FULL` | `PATCH`), `status` (`RUNNING` | `SUCCESS` | `ERROR`), `triggered_by` (`auto` | `manual_rebuild`), `previous_sha`, `current_sha`, delta counts (`nodes_added/removed`, `edges_added/removed`, `ambiguous_added/removed`), `error_message`, `started_at`, `finished_at`. Currently inserted only at the end of a build; opening a `RUNNING` row at dispatch start is a TODO.
+**`sync_runs`** — `run_id` (UUID, PK), `graph_id` FK (ON DELETE CASCADE), `mode` (`FULL` | `PATCH`), `status` (`RUNNING` | `SUCCESS` | `ERROR`), `triggered_by` (`auto` | `manual_rebuild`), `previous_sha`, `current_sha`, delta counts (`nodes_added/removed`, `edges_added/removed`, `ambiguous_added/removed`), `error_message`, `started_at`, `finished_at`. Inserted at the end of a build (the `RUNNING` status exists in the schema but is not yet written at dispatch start).
 
 **`graph_history`** — `history_id` (UUID, PK), `graph_id` FK (ON DELETE CASCADE), `version` (monotonic per `graph_id`), `run_id` FK (ON DELETE SET NULL), `graph_data` snapshot, `last_commit_sha`, count denormalisations, `created_at`. UNIQUE `(graph_id, version)`. Written by `record_graph_version` only on successful builds where `graph_data` actually changed — it's an immutable audit log of "what the graph looked like at this build", separate from the live `graphs` row.
 
@@ -256,7 +256,7 @@ Client → C1 → C2 (has_active_graph → True)
 
 ## Storage Model
 
-**Ephemeral — repo cache:** default `ingestion_layer/repo_cache/codebase/<repo>/` (override via `CACHE_ROOT`). Holds `.git/` + working tree. Loss impact: zero — re-clone on next sync. Auto-eviction (TTL + LRU disk budget) is a TODO; the `evicted_at` column exists for it.
+**Ephemeral — repo cache:** default `ingestion_layer/repo_cache/codebase/<repo>/` (override via `CACHE_ROOT`). Holds `.git/` + working tree. Loss impact: zero — re-clone on next sync. Auto-eviction is not implemented; the `evicted_at` column exists in the schema for it.
 
 **Durable — SQLite:** default `db/meridian.db`. Holds users, graphs, trees, clone tombstones, sync history, immutable graph snapshots. Loss impact: catastrophic. Back this up.
 
@@ -268,7 +268,7 @@ JWT-based. `POST /auth/register` → bcrypt the password → store in `users.pas
 
 `api/deps.py::get_current_user_id` is the only thing that mints a `user_id` for downstream routes; every DB query in `graphs.py`, `repos.py`, and the orchestrator flows through it.
 
-There is currently a `_SYSTEM_USER_ID = "system"` placeholder in `user_services/router.py` and `graph_engine/utils/db_utils.py` — it's slated for removal once `trees.graph_id` and `repo_clones.user_id` flip from nullable to NOT NULL (see `.TODO`).
+There is currently a `_SYSTEM_USER_ID = "system"` placeholder in `graph_engine/utils/db_utils.py` used as a fallback owner when `user_id` is not passed. `trees.graph_id` and `repo_clones.user_id` remain nullable in the schema.
 
 ## Key Design Decisions
 
@@ -286,6 +286,57 @@ There is currently a `_SYSTEM_USER_ID = "system"` placeholder in `user_services/
 ## Deployment
 
 Single Docker image. FastAPI serves both the API and the built React SPA from `api/static/`. SQLite is embedded — no separate DB process.
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `Dockerfile` | Two-stage build: Node 22 Alpine (SPA) → Python 3.13 slim (runtime) |
+| `docker-compose.yml` | Single-service compose with named volumes and a health check |
+| `.env.example` | Template for all required and optional environment variables |
+| `.dockerignore` | Excludes `node_modules/`, `__pycache__/`, `.git/`, db files, and the on-disk repo cache |
+
+### Quick start
+
+```bash
+cp .env.example .env          # fill in ANTHROPIC_API_KEY, JWT_SECRET
+docker compose up --build -d
+```
+
+The server is available at `http://localhost:8000`.
+
+### Build stages
+
+**Stage 1 — frontend (`node:22-alpine`):** Runs `npm ci && npm run build` inside `frontend/`. Vite writes the SPA to `api/static/` (configured via `outDir: '../api/static'` in `vite.config.ts`).
+
+**Stage 2 — runtime (`python:3.13-slim`):** Installs system packages (`git`, `build-essential`, `gfortran`, `python3-dev`, `ca-certificates`), copies `uv` from the official distroless image, installs Python deps via `uv sync --frozen --no-dev`, copies application source, and pulls the built SPA from Stage 1. `build-essential` and `gfortran` are required because `graspologic` pins `numpy<2.0`, and numpy 1.26.x has no pre-built Python 3.13 wheels — it compiles from source via meson.
+
+### Volumes
+
+| Volume | Mount | Contents | Loss impact |
+|--------|-------|----------|-------------|
+| `meridian_db` | `/app/db` | SQLite (`meridian.db`) | **Catastrophic** — back this up |
+| `meridian_cache` | `/app/cache` | Git working copies (C3a) | **Zero** — re-cloned on next sync |
+
+`CACHE_ROOT=/app/cache` is set in the Dockerfile so the repo cache writes to the dedicated volume rather than inside the package tree.
+
+### Key environment variables
+
+| Variable | Required | Default | Notes |
+|----------|----------|---------|-------|
+| `ANTHROPIC_API_KEY` | yes | — | C4b and C6 |
+| `ANTHROPIC_MODEL` | yes | — | e.g. `claude-sonnet-4-6` |
+| `JWT_SECRET` | yes (prod) | dev placeholder | Change before going to prod |
+| `MERIDIAN_PORT` | no | `8000` | Host port in compose |
+| `MERIDIAN_CORS_ORIGINS` | no | `*` | Set to exact origin in prod |
+| `QNA_TOP_K` | no | `6` | Seeds per QnA turn |
+| `QNA_MAX_TURNS` | no | `8` | Max conversation turns |
+| `CLAUDE_CODE_USE_BEDROCK` | no | unset | Set to `1` to route via AWS Bedrock |
+| `LOG_LEVEL` | no | `INFO` | uvicorn / app log verbosity |
+
+### Single worker constraint
+
+The container runs with `--workers 1`. SQLite serialises writes; multiple uvicorn workers would require WAL-mode tuning and an external process lock, which is out of scope for the embedded DB model.
 
 **Container contents:** FastAPI + uvicorn (C1, serves static SPA), git CLI (C3a), `tree-sitter-language-pack` (C4a), Agent SDK runtime (C4b), NetworkX + graspologic (C5), SQLite (C8).
 

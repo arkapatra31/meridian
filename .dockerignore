@@ -1,0 +1,50 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+*.egg-info/
+dist/
+build/
+
+# ── Node ──────────────────────────────────────────────────────────────────────
+node_modules/
+frontend/node_modules/
+
+# ── Build artifacts (rebuilt inside the image) ────────────────────────────────
+api/static/
+frontend/dist/
+
+# ── Runtime data (mounted as volumes at container start) ──────────────────────
+db/*.db
+db/*.db-shm
+db/*.db-wal
+ingestion_layer/repo_cache/codebase/
+
+# ── Dev / test ────────────────────────────────────────────────────────────────
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage/
+htmlcov/
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ── Git ───────────────────────────────────────────────────────────────────────
+.git/
+.gitignore
+.gitattributes
+
+# ── Secrets ───────────────────────────────────────────────────────────────────
+.env
+*.env
+!.env.example
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
