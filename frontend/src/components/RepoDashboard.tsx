@@ -4,7 +4,7 @@ import { useGraphStore } from '@/store'
 import { usePlaygroundStore } from '@/playgroundStore'
 import ThemeToggle from '@/components/ThemeToggle'
 import type { GraphSummary } from '@/types'
-import logoSrc from '@/assets/logo.png'
+import standaloneSrc from '@/assets/standalone-logo.png'
 
 const STATUS_STYLES = {
   READY:    'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
@@ -152,7 +152,8 @@ export default function RepoDashboard() {
       {/* Top nav */}
       <div className="relative z-10 flex items-center justify-between px-6 h-14 border-b border-gray-200 dark:border-white/5 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-sm sticky top-0">
         <div className="flex items-center gap-2.5">
-          <img src={logoSrc} alt="Meridian" className="h-7 w-auto object-contain" />
+          <img src={standaloneSrc} alt="Meridian" className="h-9 w-auto object-contain logo-spin" />
+          <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 tracking-tight">Meridian</span>
           <span className="text-gray-400 dark:text-gray-700 text-sm mx-0.5">/</span>
           <span className="text-sm text-gray-500">Dashboard</span>
         </div>

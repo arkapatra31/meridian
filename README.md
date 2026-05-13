@@ -20,70 +20,83 @@ Point Meridian at any GitHub repository and get back an interactive, queryable k
 Meridian is structured as **eight top-level components** (C1–C8) with sub-units lettered (e.g. C3a, C4b). C8 is shared persistence — every other component reads or writes through it.
 
 ```mermaid
-flowchart TD
-    C1["<b>C1 — API gateway</b>"]
-    C2["<b>C2 — Orchestrator</b><br/>Agent SDK · FULL vs PATCH"]
+graph TB
+    subgraph CLIENT["Client"]
+        C7["C7 — React Frontend\nReact 18 · Vite · react-force-graph-3d · Zustand · Tailwind"]
+    end
 
-    C3["<b>C3 — Ingestion</b><br/>Clone + MCP"]
-    C3a["C3a Git CLI"]
-    C3b["C3b MCP"]
+    subgraph GATEWAY["API Layer"]
+        C1["C1 — API Gateway\nFastAPI · JWT auth · REST + WebSocket · SPA fallback"]
+    end
 
-    C4["<b>C4 — Hybrid parser</b><br/>Tree-sitter + Reducer + Agent"]
-    C4a["C4a TS"]
-    C4ab["C4ab Reducer"]
-    C4b["C4b Agent"]
-    C4c["C4c Index"]
+    subgraph ORCH["Orchestration"]
+        C2["C2 — Orchestrator\nFULL vs PATCH dispatch · pipeline coordination"]
+    end
 
-    C5["<b>C5 — Graph engine</b><br/>NetworkX + Leiden"]
-    C5a["C5a Build"]
-    C5b["C5b Cl."]
+    subgraph INGESTION["Ingestion  (C3)"]
+        C3a["C3a — Git Client\ngit clone / pull · 0 API calls"]
+        C3b["C3b — GitHub MCP\ncommits · PRs · issues · ≤20 calls/sync"]
+    end
 
-    C6["<b>C6 — QnA agent</b><br/>ClaudeSDKClient"]
-    C7["<b>C7 — React frontend</b><br/>WebGL force-graph"]
-    C8["<b>C8 — SQLite persistence</b>"]
+    subgraph PARSING["Hybrid Parser  (C4)  ·  three-pass pipeline"]
+        C4a["C4a — Tree-sitter  Pass 1\n25 languages · EXTRACTED edges"]
+        C4ab["C4ab — Workload Reducer  Pass 1.5\nsymbol-index · ≈88% resolved free"]
+        C4b["C4b — Agent Reasoning  Pass 2\nAgent SDK · grep / glob / read\nINFERRED edges"]
+        C4c["C4c — Tree Indexer\npersist · mutate · rehydrate"]
+    end
 
-    C1 --> C2
-    C2 --> C3
-    C2 --> C4
-    C2 --> C5
-    C2 --> C6
+    subgraph GRAPH["Graph Engine  (C5)"]
+        C5a["C5a — Graph Builder\nNetworkX MultiDiGraph\nEXTRACTED + INFERRED merge"]
+        C5b["C5b — Leiden Clustering\ncommunity detection\nis_god · is_orphan flags"]
+    end
 
-    C3 --> C3a
-    C3 --> C3b
+    subgraph QNA["QnA Agent  (C6)"]
+        C6["C6 — QnA Session\nClaudeSDKClient · multi-turn streaming\nsearch_nodes · get_neighbours · get_community"]
+    end
 
-    C4 --> C4a
-    C4 --> C4ab
-    C4 --> C4b
-    C4 --> C4c
+    subgraph DB["Shared Persistence  (C8)"]
+        C8[("SQLite  ·  db/meridian.db\nusers · graphs · trees\nrepo_clones · sync_runs · graph_history")]
+    end
 
-    C5 --> C5a
-    C5 --> C5b
+    C7 <-->|REST + WebSocket| C1
+    C1 -->|dispatch| C2
+    C2 -->|clone / pull| C3a
+    C2 -->|metadata| C3b
+    C2 -->|parse| C4a
+    C4a -->|ambiguous refs| C4ab
+    C4ab -->|unresolved refs| C4b
+    C4b -->|resolved tree| C4c
+    C2 -->|build| C5a
+    C5a -->|cluster| C5b
+    C2 -->|query| C6
 
-    C3a -.-> C8
-    C4c -.-> C8
-    C5a -.-> C8
-    C5b -.-> C8
-    C6  -.-> C8
-    C7  -.-> C8
+    C3a -. "persist clone" .-> C8
+    C4c -. "index tree" .-> C8
+    C5a -. "persist graph" .-> C8
+    C5b -. "update clusters + status=READY" .-> C8
+    C6  -. "read graph" .-> C8
+    C2  -. "sync_runs · audit" .-> C8
 
-    classDef gateway     fill:#1e3a5f,color:#fff,stroke:none
-    classDef orchestrate fill:#4c3a8a,color:#fff,stroke:none
-    classDef ingestion   fill:#1f5a48,color:#fff,stroke:none
-    classDef parser      fill:#5a3a2c,color:#fff,stroke:none
-    classDef engine      fill:#6b5418,color:#fff,stroke:none
-    classDef output      fill:#6a3a4a,color:#fff,stroke:none
-    classDef persistence fill:#3a3a3a,color:#fff,stroke:none
+    classDef client      fill:#1a3560,color:#c8d8f0,stroke:#2d5090,stroke-width:1px
+    classDef gateway     fill:#1e3a5f,color:#c8d8f0,stroke:#2d5a8f,stroke-width:1px
+    classDef orchestrate fill:#3a2868,color:#d0c8f0,stroke:#5a48a0,stroke-width:1px
+    classDef ingestion   fill:#1a4838,color:#b8dcc8,stroke:#286850,stroke-width:1px
+    classDef parser      fill:#48281c,color:#e8c8b8,stroke:#684838,stroke-width:1px
+    classDef engine      fill:#483808,color:#e8d890,stroke:#686028,stroke-width:1px
+    classDef qna         fill:#481828,color:#e8b8c8,stroke:#683848,stroke-width:1px
+    classDef persistence fill:#282828,color:#c8c8c8,stroke:#484848,stroke-width:1px
 
+    class C7 client
     class C1 gateway
     class C2 orchestrate
-    class C3,C3a,C3b ingestion
-    class C4,C4a,C4ab,C4b,C4c parser
-    class C5,C5a,C5b engine
-    class C6,C7 output
+    class C3a,C3b ingestion
+    class C4a,C4ab,C4b,C4c parser
+    class C5a,C5b engine
+    class C6 qna
     class C8 persistence
 ```
 
-_Solid arrows = synchronous calls. Dashed arrows = persistence reads/writes; every component touches C8._
+_Solid arrows = synchronous call / data flow. Dashed arrows = persistence reads/writes through the shared C8 layer._
 
 ### Layer 1 — Ingestion
 
