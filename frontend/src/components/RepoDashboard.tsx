@@ -4,6 +4,7 @@ import { useGraphStore } from '@/store'
 import { usePlaygroundStore } from '@/playgroundStore'
 import ThemeToggle from '@/components/ThemeToggle'
 import type { GraphSummary } from '@/types'
+import logoSrc from '@/assets/logo.png'
 
 const STATUS_STYLES = {
   READY:    'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
@@ -151,8 +152,7 @@ export default function RepoDashboard() {
       {/* Top nav */}
       <div className="relative z-10 flex items-center justify-between px-6 h-14 border-b border-gray-200 dark:border-white/5 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-sm sticky top-0">
         <div className="flex items-center gap-2.5">
-          <MeridianLogo />
-          <span className="text-base font-bold text-gray-900 dark:text-white tracking-tight">Meridian</span>
+          <img src={logoSrc} alt="Meridian" className="h-7 w-auto object-contain" />
           <span className="text-gray-400 dark:text-gray-700 text-sm mx-0.5">/</span>
           <span className="text-sm text-gray-500">Dashboard</span>
         </div>
@@ -1230,25 +1230,6 @@ function Stat({ label, value, color }: { label: string; value: number; color: st
 }
 
 
-function MeridianLogo() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
-      <circle cx="14" cy="14" r="3" fill="#6366f1" />
-      <circle cx="14" cy="4"  r="2" fill="#a78bfa" />
-      <circle cx="14" cy="24" r="2" fill="#a78bfa" />
-      <circle cx="4"  cy="14" r="2" fill="#a78bfa" />
-      <circle cx="24" cy="14" r="2" fill="#a78bfa" />
-      <circle cx="6"  cy="6"  r="1.5" fill="#6366f1" opacity="0.5" />
-      <circle cx="22" cy="6"  r="1.5" fill="#6366f1" opacity="0.5" />
-      <circle cx="6"  cy="22" r="1.5" fill="#6366f1" opacity="0.5" />
-      <circle cx="22" cy="22" r="1.5" fill="#6366f1" opacity="0.5" />
-      <line x1="14" y1="11" x2="14" y2="6"  stroke="#6366f1" strokeWidth="1" opacity="0.6" />
-      <line x1="14" y1="17" x2="14" y2="22" stroke="#6366f1" strokeWidth="1" opacity="0.6" />
-      <line x1="11" y1="14" x2="6"  y2="14" stroke="#6366f1" strokeWidth="1" opacity="0.6" />
-      <line x1="17" y1="14" x2="22" y2="14" stroke="#6366f1" strokeWidth="1" opacity="0.6" />
-    </svg>
-  )
-}
 
 
 function formatRelativeDate(iso: string): string {

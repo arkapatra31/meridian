@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react'
 import { useAuthStore } from '@/authStore'
 import ThemeToggle from '@/components/ThemeToggle'
+import logoSrc from '@/assets/logo.png'
 
 export default function LoginPage({ onGoRegister }: { onGoRegister: () => void }) {
   const [email, setEmail]       = useState('')
@@ -30,9 +31,8 @@ export default function LoginPage({ onGoRegister }: { onGoRegister: () => void }
 
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 mb-3">
-              <MeridianLogo />
-              <span className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Meridian</span>
+            <div className="flex justify-center mb-3">
+              <img src={logoSrc} alt="Meridian" className="h-14 w-auto object-contain" />
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">Sign in to your account</p>
           </div>
@@ -106,22 +106,3 @@ function Spinner() {
   )
 }
 
-function MeridianLogo() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-      <circle cx="14" cy="14" r="3" fill="#6366f1" />
-      <circle cx="14" cy="4"  r="2" fill="#a78bfa" />
-      <circle cx="14" cy="24" r="2" fill="#a78bfa" />
-      <circle cx="4"  cy="14" r="2" fill="#a78bfa" />
-      <circle cx="24" cy="14" r="2" fill="#a78bfa" />
-      <circle cx="6"  cy="6"  r="1.5" fill="#6366f1" opacity="0.5" />
-      <circle cx="22" cy="6"  r="1.5" fill="#6366f1" opacity="0.5" />
-      <circle cx="6"  cy="22" r="1.5" fill="#6366f1" opacity="0.5" />
-      <circle cx="22" cy="22" r="1.5" fill="#6366f1" opacity="0.5" />
-      <line x1="14" y1="11" x2="14" y2="6"  stroke="#6366f1" strokeWidth="1" opacity="0.6" />
-      <line x1="14" y1="17" x2="14" y2="22" stroke="#6366f1" strokeWidth="1" opacity="0.6" />
-      <line x1="11" y1="14" x2="6"  y2="14" stroke="#6366f1" strokeWidth="1" opacity="0.6" />
-      <line x1="17" y1="14" x2="22" y2="14" stroke="#6366f1" strokeWidth="1" opacity="0.6" />
-    </svg>
-  )
-}
