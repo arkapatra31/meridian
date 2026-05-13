@@ -1,5 +1,5 @@
 """Graph-resource routes — `GET /repos` (list), `GET /graph` (fetch by id),
-`DELETE /repos/{graph_id}` (evict).
+`DELETE /repos/{graph_id}` (evict), `WS /playground/{graph_id}` (C6 QnA).
 
 Lives in its own module so the build/sync surface (repos.py) and the read
 surface evolve independently.
@@ -8,12 +8,13 @@ surface evolve independently.
 import shutil
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, WebSocket, status
 from sqlalchemy import select, text
 
 from db.database import get_session
 from db.entities import Graph
 from db.entities.repo_clone import RepoClone
+from orchestrator.qna_chat import run_playground_session
 
 from ..deps import get_current_user_id
 from ..schemas.graph import GraphResponse, GraphSummary
@@ -152,3 +153,82 @@ async def evict_graph(
 
     if clone_path and clone_path.exists():
         shutil.rmtree(clone_path, ignore_errors=True)
+
+
+@router.get(
+    "/graph/{graph_id}/skill",
+    summary="Download an AI-tool context file for this graph",
+    response_class=Response,
+)
+async def download_skill_file(
+    graph_id: str,
+    tool: str = Query(
+        "claude_code",
+        description="Target tool: claude_code | cursor | copilot | windsurf",
+    ),
+    user_id: str = Depends(get_current_user_id),
+) -> Response:
+    """Generate and return a downloadable context file for the requested AI coding tool.
+
+    - ``claude_code`` → ``.claude/commands/<slug>.md`` (slash command, frontmatter)
+    - ``cursor``      → ``.cursor/rules/<slug>-context.mdc`` (MDC frontmatter)
+    - ``copilot``     → ``.github/copilot-instructions.md`` (plain markdown, always-on)
+    - ``windsurf``    → ``.windsurfrules`` (plain markdown, always-on)
+
+    Requires the graph to be in READY status.
+    """
+    from playground.skill_generator import (
+        SUPPORTED_TOOLS,
+        generate_skill_file,
+        skill_filename,
+    )
+
+    if tool not in SUPPORTED_TOOLS:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"unsupported tool '{tool}'. Choose from: {sorted(SUPPORTED_TOOLS)}",
+        )
+
+    stmt = select(Graph).where(Graph.graph_id == graph_id, Graph.user_id == user_id)
+    with get_session() as session:
+        row = session.execute(stmt).scalar_one_or_none()
+        if row is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, detail=f"graph not found: {graph_id}")
+        if row.status != "READY" or row.graph_data is None:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                detail=f"graph {graph_id} is not READY (status={row.status})",
+            )
+        content = generate_skill_file(
+            row.graph_data,
+            repo_url=row.repo_url,
+            branch=row.branch,
+            graph_id=graph_id,
+            last_commit_sha=row.last_commit_sha,
+            tool=tool,
+        )
+        filename = skill_filename(row.repo_url, tool=tool)
+
+    return Response(
+        content=content,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.websocket("/playground/{graph_id}")
+async def playground_ws(
+    websocket: WebSocket,
+    graph_id: str,
+    token: str = Query(..., description="JWT (browsers can't set headers on WS)"),
+    query: str | None = Query(None, description="Optional initial question"),
+) -> None:
+    """Multi-turn streaming QnA over a graph. Service logic lives in
+    `orchestrator.qna_chat.run_playground_session`.
+    """
+    await run_playground_session(
+        websocket,
+        graph_id,
+        token=token,
+        initial_query=query,
+    )

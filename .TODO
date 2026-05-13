@@ -6,20 +6,25 @@
 ## API surface
 - `GET /trees/{tree_id}` — no trees route exists yet
 - `WS /repos/{graph_id}/status` — stream build progress; depends on the RUNNING row being open first (see above)
-- `POST /repos/{graph_id}/query` — C6 QnA endpoint
 - Widen FastAPI exception handling — `api/routes/repos.py` only catches `CloneError` and `ValueError`; parse, Leiden, and DB errors propagate as raw 500s
 
 ## Frontend (C7)
 - WebSocket build progress in RepoDashboard — connect to `WS /repos/{graph_id}/status` and drive the stage list from server events rather than a 3 s poll + elapsed-time heuristic
-- QnA panel — input + answer display, wire to `POST /repos/{graph_id}/query`
 - Semantic zoom — community super-nodes at low zoom, god nodes + boundaries at mid, all labelled nodes at high zoom
 
-## QnA (C6)
-- BFS 2-hop subgraph from query keywords (~2k tokens), `ClaudeSDKClient` single-shot, return answer with node references
+## Skill file / agent context (new)
+- `GET /repos/{graph_id}/context?q=<keywords>` — new C1 endpoint; runs the C6 BFS subgraph logic but returns a formatted plain-text context block instead of an LLM answer; used by skill files and the MCP server
+- Skill file generator — `GET /repos/{graph_id}/skill-file?tool=<claude|cursor|copilot|windsurf>` returns a tool-specific markdown file as a download (`Content-Disposition: attachment`); bakes `graph_id` + Meridian base URL into the file at generation time; long-lived read-only graph token bundled so the file is self-contained
+- Tool-specific templates (one per target):
+  - Claude Code → `.claude/commands/hds-context.md` (bash + curl block, `$ARGUMENTS` interpolation)
+  - Cursor → `.cursor/rules/hds-context.mdc` (Cursor Rules frontmatter + inline instruction)
+  - GitHub Copilot → `.github/copilot-instructions.md` (plain markdown, injected into every prompt)
+  - Windsurf → `.windsurfrules` (plain markdown)
+- Long-lived read-only graph token — scoped to a single `graph_id`, read-only, non-expiring; issued at skill-file download time so the file works without the user managing JWT rotation
+- MCP server (`/mcp` endpoint, SSE transport) — exposes two tools: `get_context(keywords, depth=2)` and `get_community(community_id)`; works with Claude Code, Cursor, Windsurf, Cline, Continue — any MCP-capable tool; this is the long-term universal interface, skill files are the short-term bridge
+- Frontend download button — "Download for your AI tool" dropdown on the graph detail page; calls the skill-file generator endpoint; no install required on the user's side
 
 ## Auth cleanup
 - Drop `_SYSTEM_USER_ID` placeholder in `graph_engine/utils/db_utils.py` — `sync_repo` now receives a real `user_id` from the JWT (wired through `api/routes/repos.py → orchestrator → full_build/patch_build`); the system-user fixture and its ensure-system-user bootstrap can be removed
 - Flip `trees.graph_id` (`nullable=True` in `db/entities/tree.py:31`) and `repo_clones.user_id` (`nullable=True` in `db/entities/repo_clone.py:28`) to `NOT NULL` once every code path is user-scoped (blocked by the `_SYSTEM_USER_ID` removal above)
 
-## Cleanup
-- Update CLAUDE.md frontend table: C7 uses `react-force-graph-3d` (3D / WebGL) — the table entry still says "not yet built" and should be updated to "built" with the 3D library noted

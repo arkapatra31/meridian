@@ -8,20 +8,27 @@ import RepoDashboard from './components/RepoDashboard'
 import StatsBar from './components/StatsBar'
 import GraphCanvas from './components/GraphCanvas'
 import NodeSidebar from './components/NodeSidebar'
+import PlaygroundChat from './components/PlaygroundChat'
+import PlaygroundLauncher from './components/PlaygroundLauncher'
+import { usePlaygroundStore } from './playgroundStore'
 
 export default function App() {
   const { token } = useAuthStore()
   const { graphData, loading, reset: resetGraph } = useGraphStore()
   const [page, setPage] = useState<'login' | 'register'>('login')
   const { isDark } = useThemeStore()
+  const closePlayground = usePlaygroundStore((s) => s.close)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark)
   }, [isDark])
 
   useEffect(() => {
-    if (!token) resetGraph()
-  }, [token, resetGraph])
+    if (!token) {
+      resetGraph()
+      closePlayground()
+    }
+  }, [token, resetGraph, closePlayground])
 
   if (!token) {
     return page === 'login'
@@ -29,7 +36,15 @@ export default function App() {
       : <RegisterPage onGoLogin={() => setPage('login')} />
   }
 
-  if (!graphData && !loading) return <RepoDashboard />
+  if (!graphData && !loading) {
+    return (
+      <>
+        <RepoDashboard />
+        <PlaygroundChat />
+        <PlaygroundLauncher />
+      </>
+    )
+  }
 
   return (
     <div className="relative w-full h-full bg-gray-50 dark:bg-[#0d1117] overflow-hidden">
@@ -38,6 +53,8 @@ export default function App() {
         {loading ? <LoadingOverlay onCancel={resetGraph} /> : <GraphCanvas />}
       </div>
       <NodeSidebar />
+      <PlaygroundChat />
+      <PlaygroundLauncher />
     </div>
   )
 }

@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, FormEvent } from 'react'
 import { useAuthStore } from '@/authStore'
 import { useGraphStore } from '@/store'
+import { usePlaygroundStore } from '@/playgroundStore'
 import ThemeToggle from '@/components/ThemeToggle'
 import type { GraphSummary } from '@/types'
+import standaloneSrc from '@/assets/standalone-logo.png'
 
 const STATUS_STYLES = {
   READY:    'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
@@ -28,6 +30,7 @@ function stripGit(url: string): string {
 export default function RepoDashboard() {
   const { token, user, logout } = useAuthStore()
   const { graphs, graphsLoading, graphsError, syncLoading, syncError, listGraphs, syncRepo, loadGraph, deleteGraph } = useGraphStore()
+  const openPlayground = usePlaygroundStore((s) => s.open)
 
   const [repoUrl, setRepoUrl]         = useState('')
   const [pat, setPat]                 = useState('')
@@ -35,7 +38,9 @@ export default function RepoDashboard() {
   const [buildingId, setBuildingId]   = useState<string | null>(null)
   const [buildDone, setBuildDone]     = useState(false)
   const [justReadyId, setJustReadyId] = useState<string | null>(null)
-  const [deletingId, setDeletingId]   = useState<string | null>(null)
+  const [deletingId, setDeletingId]         = useState<string | null>(null)
+  const [downloadingId, setDownloadingId]   = useState<string | null>(null)
+  const [skillModalGraph, setSkillModalGraph] = useState<GraphSummary | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -93,6 +98,42 @@ export default function RepoDashboard() {
     setDeletingId(null)
   }
 
+  const handleChat = (g: GraphSummary) => {
+    if (!token) return
+    openPlayground({
+      graphId: g.graph_id,
+      repoLabel: stripGit(g.repo_url),
+      token,
+    })
+  }
+
+  const handleDownloadSkill = async (g: GraphSummary, tool = 'claude_code') => {
+    if (!token || downloadingId) return
+    setDownloadingId(g.graph_id)
+    try {
+      const params = new URLSearchParams({ tool })
+      const res = await fetch(`/graph/${encodeURIComponent(g.graph_id)}/skill?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error(`${res.status}`)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const disposition = res.headers.get('Content-Disposition') ?? ''
+      const match = disposition.match(/filename="([^"]+)"/)
+      a.download = match ? match[1] : `meridian-skill.md`
+      a.href = url
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      // silently fail — user can retry
+    } finally {
+      setDownloadingId(null)
+    }
+  }
+
   const isBuilding = syncLoading || !!buildingId
 
   return (
@@ -111,8 +152,8 @@ export default function RepoDashboard() {
       {/* Top nav */}
       <div className="relative z-10 flex items-center justify-between px-6 h-14 border-b border-gray-200 dark:border-white/5 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-sm sticky top-0">
         <div className="flex items-center gap-2.5">
-          <MeridianLogo />
-          <span className="text-base font-bold text-gray-900 dark:text-white tracking-tight">Meridian</span>
+          <img src={standaloneSrc} alt="Meridian" className="h-9 w-auto object-contain logo-spin" />
+          <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 tracking-tight">Meridian</span>
           <span className="text-gray-400 dark:text-gray-700 text-sm mx-0.5">/</span>
           <span className="text-sm text-gray-500">Dashboard</span>
         </div>
@@ -145,7 +186,7 @@ export default function RepoDashboard() {
                 Graph built successfully — ready to explore below.
               </div>
             )}
-            <form onSubmit={handleSync} className="flex flex-col gap-4">
+            <form onSubmit={handleSync} className="flex flex-col gap-4" autoComplete="off">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5 sm:col-span-2">
                   <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
@@ -153,12 +194,19 @@ export default function RepoDashboard() {
                   </label>
                   <input
                     type="url"
+                    name="meridian-repo-url"
                     value={repoUrl}
                     onChange={(e) => setRepoUrl(e.target.value)}
                     placeholder="https://github.com/owner/repo"
                     className="w-full rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:border-indigo-500/50 transition-colors font-mono disabled:opacity-50"
                     required
                     disabled={isBuilding}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    data-1p-ignore
+                    data-lpignore="true"
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -167,12 +215,19 @@ export default function RepoDashboard() {
                   </label>
                   <input
                     type="password"
+                    name="meridian-github-pat"
                     value={pat}
                     onChange={(e) => setPat(e.target.value)}
                     placeholder="ghp_xxxxxxxxxxxx"
                     className="w-full rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:border-indigo-500/50 transition-colors font-mono disabled:opacity-50"
                     required
                     disabled={isBuilding}
+                    autoComplete="new-password"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    data-1p-ignore
+                    data-lpignore="true"
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -181,12 +236,19 @@ export default function RepoDashboard() {
                   </label>
                   <input
                     type="text"
+                    name="meridian-branch"
                     value={branch}
                     onChange={(e) => setBranch(e.target.value)}
                     placeholder="main"
                     className="w-full rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:border-indigo-500/50 transition-colors font-mono disabled:opacity-50"
                     required
                     disabled={isBuilding}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    data-1p-ignore
+                    data-lpignore="true"
                   />
                 </div>
               </div>
@@ -254,8 +316,11 @@ export default function RepoDashboard() {
                   graph={g}
                   onOpen={handleOpenGraph}
                   onDelete={handleDelete}
+                  onChat={handleChat}
+                  onDownloadSkill={(g) => setSkillModalGraph(g)}
                   isNew={g.graph_id === justReadyId}
                   isDeleting={deletingId === g.graph_id}
+                  isDownloading={downloadingId === g.graph_id}
                 />
               ))}
             </div>
@@ -269,6 +334,19 @@ export default function RepoDashboard() {
           graphId={buildingId ?? ''}
           done={buildDone}
           onClose={() => { setBuildingId(null); setBuildDone(false) }}
+        />
+      )}
+
+      {/* ── Skill instruction modal ── */}
+      {skillModalGraph && (
+        <SkillInstructionModal
+          graph={skillModalGraph}
+          isDownloading={downloadingId === skillModalGraph.graph_id}
+          onClose={() => setSkillModalGraph(null)}
+          onDownload={(g, tool) => {
+            setSkillModalGraph(null)
+            handleDownloadSkill(g, tool)
+          }}
         />
       )}
     </div>
@@ -405,6 +483,209 @@ function BuildingModal({ graphId, done, onClose }: { graphId: string; done: bool
     </div>
   )
 }
+
+// ── Skill modal helpers ────────────────────────────────────────────────────────
+
+const SKILL_TOOLS = [
+  { id: 'claude_code', label: 'Claude Code'   },
+  { id: 'cursor',      label: 'Cursor'         },
+  { id: 'copilot',     label: 'GitHub Copilot' },
+  { id: 'windsurf',    label: 'Windsurf'       },
+] as const
+
+type SkillToolId = typeof SKILL_TOOLS[number]['id']
+
+function skillFilenameFor(repoUrl: string, tool: SkillToolId): string {
+  const slug = repoUrl.replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '')
+  const safe = slug.replace(/[^a-zA-Z0-9._-]/g, '-')
+  if (tool === 'cursor')  return `${safe}-context.mdc`
+  if (tool === 'copilot') return 'copilot-instructions.md'
+  if (tool === 'windsurf') return '.windsurfrules'
+  return `meridian-${safe}.md`
+}
+
+function skillPlacementFor(repoUrl: string, tool: SkillToolId): string {
+  const fname = skillFilenameFor(repoUrl, tool)
+  if (tool === 'claude_code') return `.claude/commands/${fname}`
+  if (tool === 'cursor')      return `.cursor/rules/${fname}`
+  if (tool === 'copilot')     return `.github/${fname}`
+  return fname  // windsurf → repo root
+}
+
+function SkillInstructionModal({
+  graph,
+  isDownloading,
+  onClose,
+  onDownload,
+}: {
+  graph: GraphSummary
+  isDownloading: boolean
+  onClose: () => void
+  onDownload: (g: GraphSummary, tool: string) => void
+}) {
+  const [selectedTool, setSelectedTool] = useState<SkillToolId>('claude_code')
+
+  const placementPath = skillPlacementFor(graph.repo_url, selectedTool)
+  const filename      = skillFilenameFor(graph.repo_url, selectedTool)
+  const slashCommand  = selectedTool === 'claude_code'
+    ? `/${filename.replace(/\.md$/, '')}`
+    : null
+
+  const step2: { label: string; code?: string; prose?: string } = (() => {
+    if (selectedTool === 'claude_code') return {
+      label: 'Invoke in Claude Code',
+      code: slashCommand!,
+    }
+    if (selectedTool === 'cursor') return {
+      label: 'How it activates',
+      prose: 'Cursor automatically applies this rule based on file globs. You can also enable it manually via Cursor Settings → Rules.',
+    }
+    if (selectedTool === 'copilot') return {
+      label: 'How it activates',
+      prose: 'GitHub Copilot injects this file into every prompt automatically for this repository — no action needed.',
+    }
+    return {
+      label: 'How it activates',
+      prose: 'Windsurf reads .windsurfrules from the repo root and injects it into every session automatically.',
+    }
+  })()
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+
+      <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#0d1117] shadow-2xl">
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent rounded-t-2xl" />
+
+        <div className="p-6 flex flex-col gap-5">
+          {/* header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                <svg className="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3" />
+                </svg>
+              </div>
+              <h2 className="text-sm font-semibold text-white">Download Context File</h2>
+            </div>
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-300 transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* tool picker */}
+          <div>
+            <p className="text-xs text-gray-500 mb-2">Select your AI coding tool</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {SKILL_TOOLS.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setSelectedTool(t.id)}
+                  className={`px-3 py-2 rounded-lg text-xs font-medium text-left transition-all border ${
+                    selectedTool === t.id
+                      ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300'
+                      : 'bg-white/[0.03] border-white/8 text-gray-400 hover:border-white/15 hover:text-gray-200'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* steps */}
+          <div className="flex flex-col gap-4">
+            {/* step 1 — placement */}
+            <div className="flex gap-3">
+              <div className="flex flex-col items-center">
+                <div className="w-6 h-6 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
+                  <span className="text-[10px] font-bold text-indigo-400">1</span>
+                </div>
+                <div className="w-px flex-1 bg-white/5 mt-1.5" />
+              </div>
+              <div className="pb-4 flex flex-col gap-1.5">
+                <p className="text-xs font-semibold text-gray-300">Place in your repository</p>
+                <p className="text-xs text-gray-500">Drop the downloaded file into your repo at:</p>
+                <code className="text-xs bg-white/5 border border-white/8 rounded-lg px-3 py-2 text-indigo-300 font-mono break-all">
+                  {placementPath}
+                </code>
+              </div>
+            </div>
+
+            {/* step 2 — invocation */}
+            <div className="flex gap-3">
+              <div className="flex flex-col items-center">
+                <div className="w-6 h-6 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
+                  <span className="text-[10px] font-bold text-indigo-400">2</span>
+                </div>
+                <div className="w-px flex-1 bg-white/5 mt-1.5" />
+              </div>
+              <div className="pb-4 flex flex-col gap-1.5">
+                <p className="text-xs font-semibold text-gray-300">{step2.label}</p>
+                {step2.code != null ? (
+                  <>
+                    <p className="text-xs text-gray-500">Type this slash command in any Claude Code session inside the repo:</p>
+                    <code className="text-xs bg-white/5 border border-white/8 rounded-lg px-3 py-2 text-emerald-300 font-mono">
+                      {step2.code}
+                    </code>
+                  </>
+                ) : (
+                  <p className="text-xs text-gray-500 leading-relaxed">{step2.prose}</p>
+                )}
+              </div>
+            </div>
+
+            {/* what you get */}
+            <div className="flex gap-3">
+              <div className="w-6 h-6 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
+                <svg className="w-3 h-3 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <p className="text-xs font-semibold text-gray-300">What you get</p>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  Your AI tool starts each session with full graph context — hub nodes, community clusters,
+                  language breakdown, and architectural anchors — pre-loaded. No manual pasting required.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* footer */}
+          <div className="flex items-center justify-end gap-2 pt-1 border-t border-white/5">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => onDownload(graph, selectedTool)}
+              disabled={isDownloading}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-xs font-semibold text-white transition-colors"
+            >
+              {isDownloading ? (
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3" />
+                </svg>
+              )}
+              Download
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 
 function SubmarineAnimation({ activeIdx: _activeIdx, done }: { activeIdx: number; done: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -803,12 +1084,15 @@ function StageIcon({ type, state }: { type: string; state: 'done' | 'active' | '
 }
 
 
-function GraphCard({ graph, onOpen, onDelete, isNew, isDeleting }: {
+function GraphCard({ graph, onOpen, onDelete, onChat, onDownloadSkill, isNew, isDeleting, isDownloading }: {
   graph: GraphSummary
   onOpen: (id: string) => void
   onDelete: (id: string) => void
+  onChat: (graph: GraphSummary) => void
+  onDownloadSkill: (graph: GraphSummary) => void
   isNew?: boolean
   isDeleting?: boolean
+  isDownloading?: boolean
 }) {
   const repoStripped = stripGit(graph.repo_url)
   const repoName     = repoStripped.split('/').pop() ?? repoStripped
@@ -885,15 +1169,44 @@ function GraphCard({ graph, onOpen, onDelete, isNew, isDeleting }: {
       <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-white/5">
         <p className="text-xs text-gray-400 dark:text-gray-700">Updated {updatedAgo}</p>
         {graph.status === 'READY' ? (
-          <button
-            onClick={() => onOpen(graph.graph_id)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-colors"
-          >
-            View Graph
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onDownloadSkill(graph)}
+              disabled={isDownloading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-white/10 text-gray-500 dark:text-gray-400 hover:text-indigo-400 dark:hover:text-indigo-400 hover:border-indigo-500/30 text-xs font-semibold transition-colors disabled:opacity-40"
+              title="Download Claude Code skill file"
+            >
+              {isDownloading ? (
+                <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3" />
+                </svg>
+              )}
+              Skill
+            </button>
+            <button
+              onClick={() => onChat(graph)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-500 dark:text-indigo-300 hover:bg-indigo-500/10 text-xs font-semibold transition-colors"
+              title="Open QnA Playground"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              Chat
+            </button>
+            <button
+              onClick={() => onOpen(graph.graph_id)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-colors"
+            >
+              View Graph
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
         ) : isBuilding ? (
           <span className="flex items-center gap-1.5 text-xs text-amber-400">
             <span className="w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
@@ -918,25 +1231,6 @@ function Stat({ label, value, color }: { label: string; value: number; color: st
 }
 
 
-function MeridianLogo() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
-      <circle cx="14" cy="14" r="3" fill="#6366f1" />
-      <circle cx="14" cy="4"  r="2" fill="#a78bfa" />
-      <circle cx="14" cy="24" r="2" fill="#a78bfa" />
-      <circle cx="4"  cy="14" r="2" fill="#a78bfa" />
-      <circle cx="24" cy="14" r="2" fill="#a78bfa" />
-      <circle cx="6"  cy="6"  r="1.5" fill="#6366f1" opacity="0.5" />
-      <circle cx="22" cy="6"  r="1.5" fill="#6366f1" opacity="0.5" />
-      <circle cx="6"  cy="22" r="1.5" fill="#6366f1" opacity="0.5" />
-      <circle cx="22" cy="22" r="1.5" fill="#6366f1" opacity="0.5" />
-      <line x1="14" y1="11" x2="14" y2="6"  stroke="#6366f1" strokeWidth="1" opacity="0.6" />
-      <line x1="14" y1="17" x2="14" y2="22" stroke="#6366f1" strokeWidth="1" opacity="0.6" />
-      <line x1="11" y1="14" x2="6"  y2="14" stroke="#6366f1" strokeWidth="1" opacity="0.6" />
-      <line x1="17" y1="14" x2="22" y2="14" stroke="#6366f1" strokeWidth="1" opacity="0.6" />
-    </svg>
-  )
-}
 
 
 function formatRelativeDate(iso: string): string {

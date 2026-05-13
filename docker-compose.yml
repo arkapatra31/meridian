@@ -1,0 +1,26 @@
+services:
+  meridian:
+    build: .
+    ports:
+      - "${MERIDIAN_PORT:-8000}:8000"
+    env_file:
+      - .env
+    volumes:
+      # SQLite database — persists users, graphs, trees, sync history.
+      # Back this up; loss is catastrophic (no recovery path).
+      - meridian_db:/app/db
+      # Ephemeral repo cache — git working copies cloned by C3a.
+      # Loss is safe; the next sync re-clones from the stored last_commit_sha.
+      - meridian_cache:/app/cache
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  meridian_db:
+  meridian_cache:
