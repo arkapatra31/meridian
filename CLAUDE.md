@@ -95,8 +95,8 @@ The hybrid parser turns a cloned repo on disk into a durable parse tree. Pass 1 
 
 `hybrid_parsing/codebase_parser/parser.py` — entry points `parse_codebase(repo)` (full) and `parse_files(repo, paths)` (file-scoped, used by PATCH).
 
-- 25-language coverage via `tree-sitter-language-pack` (`languages.py::EXT_TO_LANG`).
-- Per-language walkers in `walkers/` extract nodes (modules / classes / functions / methods) and EXTRACTED edges (imports, same-file calls, contains, inherits, decorates).
+- `languages.py::EXT_TO_LANG` maps 32 file extensions to 21 languages via `tree-sitter-language-pack`. Only the 5 languages with a registered walker (`parser.py::WALKERS`: python, java, javascript, typescript, tsx) actually extract nodes/edges — a recognized extension with no walker is counted in `files_skipped`, not parsed.
+- Per-language walkers in `walkers/` (`python.py`, `java.py`, `javascript.py` — the JS module also exports the typescript/tsx walkers) extract nodes (modules / classes / functions / methods) and EXTRACTED edges (imports, same-file calls, contains, inherits, decorates).
 - Cross-file / dynamic refs are emitted as `AmbiguousRef` for downstream resolution.
 
 #### C4ab — Workload Reducer (Pass 1.5)
@@ -191,7 +191,7 @@ The orchestrator persists the build result via `graph_engine/utils/db_utils.py::
 
 The skill-file download flow lives inside `RepoDashboard`: a per-graph "Download for your AI tool" button opens a modal with a tool picker (Claude Code / Cursor / Copilot / Windsurf), shows the placement path, and calls `GET /graph/{graph_id}/skill?tool=<id>` to fetch and save the file.
 
-State stores: `authStore.ts` (JWT), `store.ts` (graph data), `themeStore.ts`.
+State stores: `authStore.ts` (JWT), `store.ts` (graph data), `playgroundStore.ts` (QnA chat session/history), `themeStore.ts`.
 
 ### C8 — Persistence
 
@@ -273,7 +273,7 @@ There is currently a `_SYSTEM_USER_ID = "system"` placeholder in `graph_engine/u
 ## Key Design Decisions
 
 1. **No LSP** — Agent SDK grep/glob/read tools handle dynamic patterns LSP can't, load only what's needed, and require no language-server infrastructure.
-2. **Tree-sitter over Python `ast`** — 25-language coverage vs Python-only.
+2. **Tree-sitter over Python `ast`** — multi-language (21 recognized extensions; node/edge extraction currently implemented for python, java, javascript, typescript, tsx) vs Python-only.
 3. **Three-pass parsing, not two** — Pass 1.5 (workload reducer) drops ~88% of ambiguous refs without an LLM call. Only what survives the symbol-index reducer hits C4b. Original CLAUDE.md described this as two-pass; the reducer was added because Pass 2 alone was burning tokens on cross-file refs that had a single deterministic match.
 4. **Hybrid ingestion** — `git clone` / `git pull` for bulk transfer (no API rate limit), GitHub MCP only for metadata enrichment (PRs, commits between SHAs).
 5. **Differential updates from day one** — PATCH re-parses only changed files via `parse_files`, mutates the stored `trees` row in place (preserves `tree_id`), and re-resolves only the delta's ambiguous refs.

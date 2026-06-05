@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meridian — Navigate code, not chaos.</title>
+<meta name="description" content="Meridian builds a living, queryable knowledge graph from any GitHub repository. Ask it anything. No install required.">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --paper:#04040a;--mid:#0b0b18;--surface:#10102a;
+  --blue:#4361ee;--cyan:#4cc9f0;--gold:#f8c94f;--green:#22c55e;
+  --muted:#6b6b8a;--border:rgba(255,255,255,0.07);
+  --ease:cubic-bezier(0.16,1,0.3,1);
+}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:#fff;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden;cursor:none}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:none}
+
+/* ── CURSOR ─────────────────────────────────────────────── */
+#cur-dot{position:fixed;width:5px;height:5px;background:#fff;border-radius:50%;pointer-events:none;z-index:99999;transform:translate(-50%,-50%);mix-blend-mode:difference}
+#cur-ring{position:fixed;width:34px;height:34px;border:1.5px solid rgba(255,255,255,0.6);border-radius:50%;pointer-events:none;z-index:99998;transform:translate(-50%,-50%);transition:width .25s var(--ease),height .25s var(--ease),border-color .25s;mix-blend-mode:difference}
+#cur-ring.big{width:52px;height:52px;border-color:var(--cyan)}
+
+/* ── BACKGROUND CANVAS ────────────────────────────────────── */
+#bg-canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+
+/* ── NAV ─────────────────────────────────────────────────── */
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:22px 52px;display:flex;align-items:center;justify-content:space-between;transition:background .4s,padding .3s,border-color .3s;border-bottom:1px solid transparent}
+nav.scrolled{background:rgba(4,4,10,.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);padding:14px 52px;border-color:var(--border)}
+.nav-logo{font-size:1.15rem;font-weight:800;letter-spacing:-0.5px;display:flex;align-items:center;gap:9px}
+.nav-beta{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;background:var(--blue);color:#fff;padding:2px 8px;border-radius:20px}
+.nav-links{display:flex;align-items:center;gap:30px}
+.nav-links a{font-size:.85rem;color:var(--muted);font-weight:500;transition:color .2s}
+.nav-links a:hover{color:#fff}
+.btn-nav{background:#fff;color:#04040a;padding:8px 20px;border-radius:100px;font-size:.85rem;font-weight:600;border:none;transition:background .2s,transform .15s}
+.btn-nav:hover{background:var(--cyan);transform:scale(1.03)}
+
+/* ── SECTIONS ─────────────────────────────────────────────── */
+section{padding:7rem 3.5rem;position:relative;z-index:1}
+section:not(#hero){background:rgba(4,4,10,.93)}
+section#before-after{background:rgba(11,11,24,.93)}
+section#beta,section#chat,section#tools{background:rgba(11,11,24,.93)}
+section#numbers{background:rgba(16,16,42,.93);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+section#graph-viz{background:rgba(11,11,24,.93)}
+section#pipeline{background:rgba(4,4,10,.93)}
+section#transform{background:rgba(4,4,10,.93)}
+
+/* ── HERO ────────────────────────────────────────────────── */
+#hero{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;background:transparent}
+#hero-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:1}
+.hero-content{position:relative;z-index:2;text-align:center;max-width:960px;padding:0 2rem}
+.hero-chip{display:inline-flex;align-items:center;gap:8px;background:rgba(67,97,238,.12);border:1px solid rgba(67,97,238,.35);border-radius:100px;padding:6px 18px;font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan);margin-bottom:2rem}
+.chip-dot{width:6px;height:6px;background:var(--cyan);border-radius:50%;animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+.hero-h1{font-size:clamp(3.5rem,9vw,8.5rem);font-weight:900;line-height:.92;letter-spacing:-.05em;margin-bottom:1.75rem}
+.hero-h1 .l1{display:block;color:#fff}
+.hero-h1 .l2{display:block;color:#c084fc;text-shadow:0 0 80px rgba(192,132,252,.6),0 0 30px rgba(192,132,252,.4)}
+.hero-h1 .l3{display:block;color:rgba(255,255,255,.55);font-size:clamp(2rem,5vw,5rem);font-weight:700;letter-spacing:-.03em;margin-top:.3em}
+.char{display:inline-block;clip-path:inset(0 110% 0 0);animation:creveal .55s var(--ease) forwards}
+@keyframes creveal{to{clip-path:inset(0 0% 0 0)}}
+.hero-sub{font-size:clamp(1rem,1.8vw,1.2rem);color:var(--muted);max-width:520px;margin:0 auto 2.5rem;line-height:1.75}
+.hero-sub.anim{opacity:0;animation:fadeup .8s var(--ease) 1.3s forwards}
+@keyframes fadeup{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.hero-actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;opacity:0;animation:fadeup .8s var(--ease) 1.5s forwards}
+.btn-primary{background:linear-gradient(135deg,var(--blue),var(--cyan));color:#fff;padding:14px 34px;border-radius:100px;font-size:.95rem;font-weight:600;border:none;display:inline-flex;align-items:center;gap:8px;transition:transform .2s,box-shadow .2s;box-shadow:0 0 40px rgba(67,97,238,.35)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 0 60px rgba(67,97,238,.55)}
+.btn-ghost{color:var(--muted);padding:14px 24px;border-radius:100px;font-size:.95rem;font-weight:500;border:1px solid var(--border);transition:color .2s,border-color .2s}
+.btn-ghost:hover{color:#fff;border-color:rgba(255,255,255,.25)}
+.scroll-hint{position:absolute;bottom:2.5rem;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted);font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;opacity:0;animation:fadeup .8s var(--ease) 1.8s forwards;z-index:2}
+.scroll-bar{width:1px;height:40px;background:linear-gradient(to bottom,var(--muted),transparent);animation:scrollpulse 2s ease-in-out infinite}
+@keyframes scrollpulse{0%,100%{opacity:.4}50%{opacity:1}}
+
+/* ── REVEAL ───────────────────────────────────────────────── */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .75s var(--ease),transform .75s var(--ease)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-delay-1{transition-delay:.1s}
+.reveal-delay-2{transition-delay:.2s}
+.reveal-delay-3{transition-delay:.35s}
+
+/* ── SECTION COMMON ───────────────────────────────────────── */
+.inner{max-width:1200px;margin:0 auto}
+.sec-label{font-size:.68rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--blue);margin-bottom:1.25rem}
+.sec-title{font-size:clamp(2.25rem,4.5vw,4rem);font-weight:900;line-height:1.04;letter-spacing:-.035em;margin-bottom:1rem}
+.sec-sub{font-size:1rem;color:var(--muted);line-height:1.75;max-width:560px}
+
+/* ── BEFORE / AFTER ──────────────────────────────────────── */
+.ba-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;border-radius:20px;overflow:hidden;border:1px solid var(--border);margin-top:4rem}
+.ba-panel{padding:3rem 2.5rem}
+.ba-before{background:#09090f}
+.ba-after{background:#070717;border-left:2px solid rgba(67,97,238,.4)}
+.ba-tag{display:inline-flex;align-items:center;gap:8px;font-size:.68rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;padding:5px 14px;border-radius:100px;margin-bottom:2rem}
+.ba-tag.before-tag{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#ef4444}
+.ba-tag.after-tag{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:var(--green)}
+.ba-tag-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.ba-items{display:flex;flex-direction:column;gap:1.1rem}
+.ba-item{display:flex;align-items:flex-start;gap:14px;font-size:.92rem;line-height:1.55}
+.ba-icon{flex-shrink:0;width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.85rem;margin-top:1px}
+.ba-before .ba-icon{background:rgba(239,68,68,.1);color:#ef4444}
+.ba-after .ba-icon{background:rgba(34,197,94,.1);color:var(--green)}
+.ba-before .ba-item-text{color:var(--muted)}
+.ba-after .ba-item-text{color:#e0e0ff}
+.ba-before .ba-item-text strong{color:#ef6060}
+.ba-after .ba-item-text strong{color:var(--cyan)}
+
+/* ── TRANSFORM ─────────────────────────────────────────────── */
+#transform{overflow:hidden}
+.tx-grid{display:grid;grid-template-columns:1fr 1.1fr;gap:5rem;align-items:center;margin-top:1rem}
+.tx-copy .tx-stats{display:flex;gap:3rem;margin-top:2.5rem}
+.tx-stat-n{font-size:2.8rem;font-weight:900;letter-spacing:-.04em;background:linear-gradient(135deg,var(--blue),var(--cyan));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;line-height:1}
+.tx-stat-l{font-size:.75rem;color:var(--muted);margin-top:5px;line-height:1.5}
+.tx-visual{height:500px;border-radius:18px;overflow:hidden;border:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;background:var(--surface)}
+.tx-code-pane{padding:1.75rem 1.5rem;border-right:1px solid var(--border);overflow:hidden}
+.tx-pane-label{font-size:.6rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:1.25rem;display:flex;align-items:center;gap:8px}
+.tx-dots{display:flex;gap:5px}.tx-dots span{width:8px;height:8px;border-radius:50%}
+.tx-dots span:nth-child(1){background:#ff5f57}
+.tx-dots span:nth-child(2){background:#febc2e}
+.tx-dots span:nth-child(3){background:#28c840}
+.code-line-row{display:flex;gap:.75rem;font-size:.7rem;font-family:'Menlo','Fira Code',monospace;line-height:1.85;opacity:.35;transition:opacity .3s,background .3s;padding:0 6px;border-radius:5px;margin:0 -6px}
+.code-line-row.lit{opacity:1;background:rgba(67,97,238,.1)}
+.ln{color:#3a3a5a;min-width:1.2rem;text-align:right;user-select:none;flex-shrink:0}
+.kw{color:#c792ea}.fn{color:#82aaff}.cn{color:#4cc9f0}.st{color:#c3e88d}.cm{color:#4a4a6a;font-style:italic}
+.tx-graph-pane{position:relative}
+#tx-canvas{position:absolute;inset:0;width:100%;height:100%}
+
+/* ── BETA ─────────────────────────────────────────────────── */
+.beta-inner{max-width:900px;margin:0 auto;text-align:center}
+.beta-badge{display:inline-flex;align-items:center;gap:10px;background:rgba(248,201,79,.1);border:1px solid rgba(248,201,79,.3);color:var(--gold);padding:8px 20px;border-radius:100px;font-size:.8rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2rem}
+.beta-dot{width:7px;height:7px;background:var(--gold);border-radius:50%;animation:blink 2s ease-in-out infinite}
+.lang-cards{display:flex;gap:1.25rem;justify-content:center;flex-wrap:wrap;margin:3rem 0 2rem}
+.lang-card{background:rgba(16,16,42,.8);border:1px solid var(--border);border-radius:16px;padding:2rem 2.25rem;display:flex;align-items:center;gap:1rem;flex:1;min-width:200px;max-width:260px;transition:border-color .3s,transform .3s}
+.lang-card:hover{border-color:rgba(76,201,240,.35);transform:translateY(-4px)}
+.lang-emoji{font-size:2.25rem}
+.lang-name{font-size:1rem;font-weight:700}
+.lang-ok{font-size:.78rem;color:var(--cyan);font-weight:600;margin-top:3px}
+.soon-row{display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center}
+.soon-pill{background:rgba(16,16,42,.8);border:1px solid var(--border);color:var(--muted);padding:5px 14px;border-radius:100px;font-size:.75rem}
+
+/* ── PIPELINE ─────────────────────────────────────────────── */
+#pipeline{overflow:hidden}
+.pipe-bg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:42vw;font-weight:900;color:rgba(67,97,238,.025);line-height:1;pointer-events:none;user-select:none;letter-spacing:-.04em}
+.pass-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:4rem}
+.pass-card{background:rgba(16,16,42,.9);border:1px solid var(--border);border-radius:18px;padding:2.5rem 2rem;position:relative;overflow:hidden;transition:transform .35s var(--ease),border-color .3s}
+.pass-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--blue),var(--cyan));transform:scaleX(0);transform-origin:left;transition:transform .7s var(--ease)}
+.pass-card.lit{transform:translateY(-5px);border-color:rgba(67,97,238,.4)}
+.pass-card.lit::after{transform:scaleX(1)}
+.pass-num{font-size:.65rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:.85rem}
+.pass-name{font-size:1.25rem;font-weight:800;margin-bottom:.75rem;letter-spacing:-.02em}
+.pass-desc{font-size:.88rem;color:var(--muted);line-height:1.65;margin-bottom:1.75rem}
+.pass-metric{font-size:2rem;font-weight:900;letter-spacing:-.04em;background:linear-gradient(135deg,var(--blue),var(--cyan));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.pass-metric-l{font-size:.72rem;color:var(--muted);margin-top:4px}
+
+/* ── GRAPH CANVAS ─────────────────────────────────────────── */
+#graph-viz{padding:0;height:100vh;position:relative;overflow:hidden}
+#gv-canvas{position:absolute;inset:0;width:100%;height:100%}
+.gv-top{position:absolute;top:3rem;left:50%;transform:translateX(-50%);z-index:2;text-align:center;pointer-events:none}
+.gv-top h2{font-size:clamp(1.5rem,3vw,2.5rem);font-weight:800;letter-spacing:-.03em}
+.gv-top p{color:var(--muted);font-size:.85rem;margin-top:.5rem}
+.gv-stats{position:absolute;bottom:3rem;left:3rem;z-index:2;display:flex;gap:1.25rem}
+.gv-stat{background:rgba(4,4,10,.8);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.6rem}
+.gv-stat-n{font-size:1.6rem;font-weight:900;letter-spacing:-.04em}
+.gv-stat-l{font-size:.7rem;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.08em}
+
+/* ── AGENT RELIEF ─────────────────────────────────────────── */
+.ar-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:4rem}
+.ar-panel{border-radius:18px;overflow:hidden;border:1px solid var(--border)}
+.ar-panel-head{padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:rgba(16,16,42,.6)}
+.ar-panel-title{font-size:.78rem;font-weight:600;color:var(--muted)}
+.ar-status{display:flex;align-items:center;gap:6px;font-size:.7rem}
+.status-dot{width:7px;height:7px;border-radius:50%}
+.status-red{background:#ef4444;box-shadow:0 0 8px #ef4444}
+.status-green{background:#22c55e;box-shadow:0 0 8px #22c55e;animation:glow-pulse 2s ease-in-out infinite}
+@keyframes glow-pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.ar-body{padding:1.5rem;background:rgba(16,16,42,.5);min-height:340px;display:flex;flex-direction:column;gap:.85rem}
+.ar-file-item{display:flex;align-items:center;gap:10px;font-size:.78rem;font-family:'Menlo','Fira Code',monospace;padding:.45rem .75rem;border-radius:7px}
+.ar-file-item.loading{background:rgba(255,255,255,.03);color:var(--muted);animation:loading-pulse 1.5s ease-in-out infinite}
+.ar-file-item.done{background:rgba(34,197,94,.06);color:#86efac}
+.ar-file-item.error{background:rgba(239,68,68,.06);color:#fca5a5}
+@keyframes loading-pulse{0%,100%{opacity:.5}50%{opacity:1}}
+.ar-file-icon{width:16px;height:16px;flex-shrink:0;opacity:.7}
+.context-bar{margin-top:.5rem}
+.context-bar-label{font-size:.68rem;color:var(--muted);margin-bottom:.4rem;display:flex;justify-content:space-between}
+.context-track{height:6px;background:rgba(255,255,255,.06);border-radius:100px;overflow:hidden}
+.context-fill{height:100%;border-radius:100px;transition:width 1s ease-in-out}
+.context-fill.danger{background:linear-gradient(90deg,#f59e0b,#ef4444)}
+.context-fill.safe{background:linear-gradient(90deg,var(--blue),var(--cyan))}
+.ar-answer{background:rgba(34,197,94,.05);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:1rem 1.25rem;font-size:.8rem;line-height:1.6;color:#d1fae5}
+.ar-answer .cite{display:inline-block;background:rgba(76,201,240,.15);border:1px solid rgba(76,201,240,.3);color:var(--cyan);padding:1px 7px;border-radius:5px;font-size:.7rem;font-family:monospace}
+.ar-ctx-note{font-size:.72rem;color:var(--muted);font-style:italic;margin-top:.5rem}
+.ar-skill-card{background:rgba(67,97,238,.08);border:1px solid rgba(67,97,238,.25);border-radius:10px;padding:1rem 1.25rem;display:flex;align-items:center;gap:.75rem}
+.ar-skill-icon{width:36px;height:36px;flex-shrink:0}
+.ar-skill-info{flex:1}
+.ar-skill-name{font-size:.85rem;font-weight:700;color:#fff}
+.ar-skill-path{font-size:.7rem;color:var(--blue);font-family:monospace;margin-top:2px}
+.ar-skill-loaded{font-size:.68rem;color:var(--green);margin-top:4px;display:flex;align-items:center;gap:5px}
+
+/* ── CHAT ─────────────────────────────────────────────────── */
+.chat-grid{display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center}
+.chat-window{background:rgba(16,16,42,.8);border:1px solid var(--border);border-radius:20px;overflow:hidden}
+.chat-head{padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.75rem}
+.chat-head-ava{width:30px;height:30px;background:linear-gradient(135deg,var(--blue),var(--cyan));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700}
+.chat-head-name{font-size:.88rem;font-weight:600}
+.chat-head-sub{font-size:.7rem;color:var(--muted)}
+.chat-online{width:7px;height:7px;background:var(--green);border-radius:50%;margin-left:auto;animation:blink 2s ease-in-out infinite}
+.chat-msgs{padding:1.5rem;display:flex;flex-direction:column;gap:.9rem;min-height:360px}
+.chat-m{max-width:88%;font-size:.82rem;line-height:1.6;border-radius:14px;padding:.75rem 1rem;opacity:0;transform:translateY(8px);transition:opacity .3s,transform .3s}
+.chat-m.visible{opacity:1;transform:translateY(0)}
+.chat-m.user{background:var(--blue);color:#fff;align-self:flex-end;border-bottom-right-radius:3px}
+.chat-m.bot{background:rgba(255,255,255,.04);border:1px solid var(--border);color:#e0e0ff;align-self:flex-start;border-bottom-left-radius:3px}
+.chat-m .cite{display:inline-block;background:rgba(67,97,238,.2);border:1px solid rgba(67,97,238,.4);color:var(--cyan);padding:1px 7px;border-radius:5px;font-size:.7rem;font-family:monospace;margin:0 2px}
+.chat-typing{display:flex;gap:5px;padding:.65rem .9rem;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:14px;border-bottom-left-radius:3px;width:fit-content;display:none}
+.tyd{width:7px;height:7px;background:var(--muted);border-radius:50%;animation:tyb 1.2s ease-in-out infinite}
+.tyd:nth-child(2){animation-delay:.2s}.tyd:nth-child(3){animation-delay:.4s}
+@keyframes tyb{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-7px)}}
+.chat-feats{margin-top:2.5rem;display:flex;flex-direction:column;gap:1rem}
+.chat-feat{display:flex;align-items:flex-start;gap:12px;font-size:.9rem;line-height:1.6;color:var(--muted)}
+.feat-dot{width:7px;height:7px;background:var(--blue);border-radius:50%;flex-shrink:0;margin-top:.45em}
+.chat-feat strong{color:#fff}
+
+/* ── NUMBERS ─────────────────────────────────────────────── */
+.nums-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2rem;text-align:center}
+.num-n{font-size:clamp(2.5rem,5vw,4.5rem);font-weight:900;letter-spacing:-.05em;background:linear-gradient(135deg,var(--blue),var(--cyan));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;display:block;line-height:1;margin-bottom:.6rem}
+.num-l{font-size:.82rem;color:var(--muted);line-height:1.5}
+
+/* ── TOOLS ────────────────────────────────────────────────── */
+.tools-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.5rem;margin-top:4rem}
+.tool-card{background:rgba(16,16,42,.8);border:1px solid var(--border);border-radius:18px;padding:2rem 1.75rem;transition:border-color .3s,transform .35s var(--ease)}
+.tool-card:hover{border-color:rgba(67,97,238,.4);transform:translateY(-5px)}
+.tool-logo{width:52px;height:52px;border-radius:14px;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.tool-name{font-size:1rem;font-weight:700;margin-bottom:.4rem}
+.tool-path{font-size:.68rem;color:var(--blue);font-family:monospace;background:rgba(67,97,238,.08);border-radius:5px;padding:3px 8px;display:inline-block;margin-bottom:.75rem;word-break:break-all}
+.tool-desc{font-size:.82rem;color:var(--muted);line-height:1.6}
+
+/* ── CTA ──────────────────────────────────────────────────── */
+#cta{text-align:center;padding:9rem 3.5rem;position:relative;overflow:hidden}
+.cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:900px;height:500px;background:radial-gradient(ellipse,rgba(67,97,238,.14),transparent 70%);pointer-events:none}
+.cta-h{font-size:clamp(4rem,10vw,9.5rem);font-weight:900;line-height:.92;letter-spacing:-.06em;position:relative;z-index:1;margin-bottom:2rem}
+.cta-h .g{background:linear-gradient(120deg,var(--blue),var(--cyan));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.cta-sub{font-size:1.05rem;color:var(--muted);max-width:480px;margin:0 auto 2.5rem;line-height:1.75;position:relative;z-index:1}
+.cta-code{max-width:580px;margin:0 auto 2.5rem;background:rgba(16,16,42,.9);border:1px solid var(--border);border-radius:14px;padding:1.75rem 2rem;text-align:left;font-family:'Menlo','Fira Code',monospace;font-size:.8rem;line-height:1.75;position:relative;z-index:1}
+.cta-code .cm{color:var(--muted)}.cta-code .kw{color:var(--cyan)}
+.cta-btns{display:flex;gap:1rem;justify-content:center;position:relative;z-index:1}
+
+/* ── FOOTER ───────────────────────────────────────────────── */
+footer{padding:2.5rem 3.5rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:rgba(4,4,10,.97);position:relative;z-index:1}
+.foot-logo{font-size:.95rem;font-weight:800;letter-spacing:-.02em}
+.foot-links{display:flex;gap:2rem}
+.foot-links a{font-size:.8rem;color:var(--muted);transition:color .2s}
+.foot-links a:hover{color:#fff}
+.foot-cr{font-size:.75rem;color:var(--muted)}
+
+@media(max-width:900px){
+  section{padding:5rem 1.5rem}
+  .tx-grid,.chat-grid,.ar-grid{grid-template-columns:1fr}
+  .ba-visual-grid{grid-template-columns:1fr}
+  .pass-grid,.tools-grid,.nums-grid{grid-template-columns:repeat(2,1fr)}
+  nav{padding:16px 1.5rem}
+  .nav-links{display:none}
+  footer{flex-direction:column;gap:1.5rem;text-align:center}
+}
+</style>
+</head>
+<body>
+
+<!-- CURSOR -->
+<div id="cur-dot"></div>
+<div id="cur-ring"></div>
+
+<!-- BACKGROUND GRAPH (fixed, always building) -->
+<canvas id="bg-canvas"></canvas>
+
+<!-- NAV -->
+<nav id="nav">
+  <div class="nav-logo">Meridian <span class="nav-beta">Beta</span></div>
+  <div class="nav-links">
+    <a href="#before-after">Before &amp; After</a>
+    <a href="#transform">How it works</a>
+    <a href="#pipeline">Pipeline</a>
+    <a href="#agent-relief">Agent Relief</a>
+    <a href="#tools">Export</a>
+    <a href="https://github.com/arkapatra31/meridian" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://github.com/arkapatra31/meridian" class="btn-nav" target="_blank" rel="noopener">Star on GitHub →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <canvas id="hero-canvas"></canvas>
+  <div class="hero-content">
+    <div class="hero-chip"><span class="chip-dot"></span>Open Beta · Python · Java · JavaScript</div>
+    <h1 class="hero-h1">
+      <span class="l1" id="hero-l1"></span>
+      <span class="l2" id="hero-l2"></span>
+    </h1>
+    <p class="hero-sub anim">Point Meridian at any GitHub repository. Get back a living, queryable knowledge graph. Ask it anything — answers cite actual nodes and files.</p>
+    <div class="hero-actions">
+      <a href="https://github.com/arkapatra31/meridian" class="btn-primary" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.44 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        View on GitHub
+      </a>
+      <a href="#before-after" class="btn-ghost">See the difference →</a>
+    </div>
+  </div>
+  <div class="scroll-hint"><div class="scroll-bar"></div><span>Scroll</span></div>
+</section>
+
+<!-- BEFORE / AFTER -->
+<section id="before-after">
+  <div class="inner">
+    <div class="sec-label reveal">The shift</div>
+    <h2 class="sec-title reveal">Before Meridian.<br>After Meridian.</h2>
+    <p class="sec-sub reveal">Stop navigating code blind. Every relationship, every call chain, every cluster — visible instantly.</p>
+    <div class="ba-grid reveal">
+      <div class="ba-panel ba-before">
+        <div class="ba-tag before-tag"><span class="ba-tag-dot"></span>Without Meridian</div>
+        <div class="ba-items">
+          <div class="ba-item"><div class="ba-icon">✕</div><div class="ba-item-text"><strong>grep -r "validate" . | grep -v test</strong> — 83 results across 29 files. Start reading.</div></div>
+          <div class="ba-item"><div class="ba-icon">✕</div><div class="ba-item-text">Open 12 files to trace one call chain. <strong>Lose context halfway.</strong> Start again.</div></div>
+          <div class="ba-item"><div class="ba-icon">✕</div><div class="ba-item-text">Ask the AI assistant. It <strong>hallucinates a file path</strong> that doesn't exist.</div></div>
+          <div class="ba-item"><div class="ba-icon">✕</div><div class="ba-item-text">New engineer onboarding: <strong>2 weeks</strong> before they understand the module boundaries.</div></div>
+          <div class="ba-item"><div class="ba-icon">✕</div><div class="ba-item-text">Refactor causes a silent break. <strong>Nobody saw the dependency.</strong></div></div>
+          <div class="ba-item"><div class="ba-icon">✕</div><div class="ba-item-text">Dead code stays forever. <strong>No one knows if it's still used.</strong></div></div>
+        </div>
+      </div>
+      <div class="ba-panel ba-after">
+        <div class="ba-tag after-tag"><span class="ba-tag-dot"></span>With Meridian</div>
+        <div class="ba-items">
+          <div class="ba-item"><div class="ba-icon">✓</div><div class="ba-item-text">Ask <em>"who calls validate?"</em> — get <strong>every caller, cited, with file:line</strong>. In 2 seconds.</div></div>
+          <div class="ba-item"><div class="ba-icon">✓</div><div class="ba-item-text">The graph renders the <strong>entire call chain visually</strong>. One glance replaces 12 open files.</div></div>
+          <div class="ba-item"><div class="ba-icon">✓</div><div class="ba-item-text">AI answers are <strong>grounded in the live graph</strong>. Every claim links to a real node.</div></div>
+          <div class="ba-item"><div class="ba-icon">✓</div><div class="ba-item-text">New engineer: <strong>share the graph link</strong>. Module boundaries visible immediately.</div></div>
+          <div class="ba-item"><div class="ba-icon">✓</div><div class="ba-item-text">Refactor safely — <strong>every downstream dependency is an edge</strong> on the graph.</div></div>
+          <div class="ba-item"><div class="ba-icon">✓</div><div class="ba-item-text"><strong>Orphan nodes flagged automatically.</strong> Dead code has nowhere to hide.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CODE → GRAPH TRANSFORM -->
+<section id="transform">
+  <div class="inner">
+    <div class="tx-grid">
+      <div class="tx-copy reveal">
+        <div class="sec-label">What changes</div>
+        <h2 class="sec-title">From grep-ing in the dark to <em style="font-style:normal;background:linear-gradient(135deg,var(--blue),var(--cyan));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">seeing every connection</em></h2>
+        <p class="sec-sub">Meridian renders your codebase as a living knowledge graph — functions, classes, modules, and every relationship between them. Point it at any GitHub URL.</p>
+        <div class="tx-stats">
+          <div>
+            <div class="tx-stat-n" data-count="21">0</div>
+            <div class="tx-stat-l">Languages<br>recognized</div>
+          </div>
+          <div>
+            <div class="tx-stat-n" data-count="88" data-suffix="%">0%</div>
+            <div class="tx-stat-l">Refs resolved<br>without LLM</div>
+          </div>
+          <div>
+            <div class="tx-stat-n" data-count="0" data-zero="Zero" data-suffix=" install">—</div>
+            <div class="tx-stat-l">Required on<br>your machine</div>
+          </div>
+        </div>
+      </div>
+      <div class="tx-visual reveal reveal-delay-2">
+        <div class="tx-code-pane">
+          <div class="tx-pane-label"><span class="tx-dots"><span></span><span></span><span></span></span> auth/service.py</div>
+          <div id="code-area"></div>
+        </div>
+        <div class="tx-graph-pane">
+          <div class="tx-pane-label" style="position:absolute;top:1.25rem;left:1.25rem;z-index:1">Graph output</div>
+          <canvas id="tx-canvas"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BETA -->
+<section id="beta">
+  <div class="inner">
+    <div class="beta-inner">
+      <div class="beta-badge reveal"><span class="beta-dot"></span>Public Beta</div>
+      <h2 class="sec-title reveal">3 languages, fully supported</h2>
+      <p class="sec-sub reveal" style="margin:0 auto 0">Full node extraction, edge resolution, and Leiden community clustering — production-ready today. More languages are in the pipeline.</p>
+      <div class="lang-cards">
+        <div class="lang-card reveal"><div class="lang-emoji">🐍</div><div><div class="lang-name">Python</div><div class="lang-ok">✓ Fully supported</div></div></div>
+        <div class="lang-card reveal reveal-delay-1"><div class="lang-emoji">☕</div><div><div class="lang-name">Java</div><div class="lang-ok">✓ Fully supported</div></div></div>
+        <div class="lang-card reveal reveal-delay-2"><div class="lang-emoji">🟨</div><div><div class="lang-name">JavaScript</div><div class="lang-ok">✓ Fully supported</div></div></div>
+      </div>
+      <p style="color:var(--muted);font-size:.78rem;margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.1em;font-weight:600">Coming soon</p>
+      <div class="soon-row reveal">
+        <span class="soon-pill">TypeScript</span><span class="soon-pill">Go</span><span class="soon-pill">Rust</span>
+        <span class="soon-pill">C++</span><span class="soon-pill">Ruby</span><span class="soon-pill">C#</span><span class="soon-pill">+ more</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PIPELINE -->
+<section id="pipeline">
+  <div class="pipe-bg" aria-hidden="true">3</div>
+  <div class="inner">
+    <div class="pipeline-header reveal">
+      <div class="sec-label">Architecture</div>
+      <h2 class="sec-title">Three passes.<br>No wasted tokens.</h2>
+      <p class="sec-sub">Most tools throw the entire codebase at an LLM. Meridian doesn't. A deterministic parser handles the obvious; a symbol index resolves the easy refs; the agent handles only what's left.</p>
+    </div>
+    <div class="pass-grid">
+      <div class="pass-card" id="pass-1">
+        <div class="pass-num">Pass 01</div>
+        <div class="pass-name">Tree-sitter</div>
+        <div class="pass-desc">Deterministic grammar parsing. Extracts every function, class, module, and explicit edge. No AI involved. Zero cost.</div>
+        <div class="pass-metric" data-count="21">0</div>
+        <div class="pass-metric-l">Languages recognized</div>
+      </div>
+      <div class="pass-card" id="pass-2">
+        <div class="pass-num">Pass 02</div>
+        <div class="pass-name">Symbol Reducer</div>
+        <div class="pass-desc">Builds a project-wide symbol index. Routes ambiguous refs to a language-specific resolver. Resolves ~88% without LLM.</div>
+        <div class="pass-metric" data-count="88" data-suffix="%">0%</div>
+        <div class="pass-metric-l">Resolved without LLM</div>
+      </div>
+      <div class="pass-card" id="pass-3">
+        <div class="pass-num">Pass 03</div>
+        <div class="pass-name">Agent Reasoning</div>
+        <div class="pass-desc">Surgical. Uses grep/glob/read to resolve only what the symbol index couldn't. Never reads a whole file. Only fires when needed.</div>
+        <div class="pass-metric" data-count="2" data-suffix="%">0%</div>
+        <div class="pass-metric-l">Reaches the agent</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GRAPH VIZ -->
+<section id="graph-viz">
+  <canvas id="gv-canvas"></canvas>
+  <div class="gv-top">
+    <h2>Your codebase, rendered live</h2>
+    <p>Hover to repel nodes · Gold = god nodes (hubs) · Dim = orphans (dead code)</p>
+  </div>
+  <div class="gv-stats">
+    <div class="gv-stat"><div class="gv-stat-n" id="st-nodes">—</div><div class="gv-stat-l">Nodes</div></div>
+    <div class="gv-stat"><div class="gv-stat-n" id="st-edges">—</div><div class="gv-stat-l">Edges</div></div>
+    <div class="gv-stat"><div class="gv-stat-n" id="st-comm">—</div><div class="gv-stat-l">Communities</div></div>
+  </div>
+</section>
+
+<!-- AGENT RELIEF -->
+<section id="agent-relief">
+  <div class="inner">
+    <div class="sec-label reveal">Agent Relief</div>
+    <h2 class="sec-title reveal">Your AI agent, finally <em style="font-style:normal;background:linear-gradient(135deg,var(--blue),var(--cyan));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">at full strength</em></h2>
+    <p class="sec-sub reveal">Without the graph, coding agents waste their entire context reading random files. Meridian generates a skill file baked from the graph — your agent knows everything before it reads a single line of code.</p>
+    <div class="ar-grid">
+      <div class="ar-panel reveal">
+        <div class="ar-panel-head">
+          <div class="ar-panel-title">Agent without Meridian skill</div>
+          <div class="ar-status"><div class="status-dot status-red"></div><span style="color:#ef4444;font-size:.72rem">Context exhausted</span></div>
+        </div>
+        <div class="ar-body" id="ar-before-body">
+          <div class="ar-file-item loading" id="af1"><svg class="ar-file-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M9.293 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.707L9.293 0zM9.5 3.5v-2l3 3h-2a1 1 0 0 1-1-1z"/></svg>Reading auth/service.py (340 lines)…</div>
+          <div class="ar-file-item loading" id="af2"><svg class="ar-file-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M9.293 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.707L9.293 0zM9.5 3.5v-2l3 3h-2a1 1 0 0 1-1-1z"/></svg>Reading auth/tokens.py (218 lines)…</div>
+          <div class="ar-file-item loading" id="af3"><svg class="ar-file-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M9.293 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.707L9.293 0zM9.5 3.5v-2l3 3h-2a1 1 0 0 1-1-1z"/></svg>Reading api/deps.py (127 lines)…</div>
+          <div class="ar-file-item loading" id="af4"><svg class="ar-file-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M9.293 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.707L9.293 0zM9.5 3.5v-2l3 3h-2a1 1 0 0 1-1-1z"/></svg>Reading db/entities/users.py (89 lines)…</div>
+          <div class="ar-file-item loading" id="af5" style="display:none"><svg class="ar-file-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M9.293 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.707L9.293 0zM9.5 3.5v-2l3 3h-2a1 1 0 0 1-1-1z"/></svg>Reading orchestrator/utils/db_utils.py (201 lines)…</div>
+          <div class="context-bar">
+            <div class="context-bar-label"><span>Context window</span><span id="ctx-pct">12%</span></div>
+            <div class="context-track"><div class="context-fill danger" id="ctx-fill" style="width:12%"></div></div>
+          </div>
+          <div class="ar-file-item error" id="af-err" style="display:none"><svg class="ar-file-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg>Context limit reached. Cannot determine relationships.</div>
+        </div>
+      </div>
+      <div class="ar-panel reveal reveal-delay-2">
+        <div class="ar-panel-head">
+          <div class="ar-panel-title">Agent with Meridian skill file</div>
+          <div class="ar-status"><div class="status-dot status-green"></div><span style="color:#22c55e;font-size:.72rem">Graph loaded · Ready</span></div>
+        </div>
+        <div class="ar-body" id="ar-after-body">
+          <div class="ar-skill-card">
+            <svg class="ar-skill-icon" viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="9" fill="#1a1a3e"/><path d="M18 8L26 16H22V26H14V16H10L18 8Z" fill="#4361ee"/><path d="M12 28H24V30H12V28Z" fill="#4cc9f0"/></svg>
+            <div class="ar-skill-info">
+              <div class="ar-skill-name">meridian-graph.md</div>
+              <div class="ar-skill-path">.claude/commands/meridian-graph.md</div>
+              <div class="ar-skill-loaded"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg>Skill file loaded · 142 nodes · 6 communities · 289 edges</div>
+            </div>
+          </div>
+          <div class="context-bar">
+            <div class="context-bar-label"><span>Context window</span><span style="color:var(--cyan)">8% used</span></div>
+            <div class="context-track"><div class="context-fill safe" style="width:8%"></div></div>
+          </div>
+          <div class="ar-answer" id="ar-answer" style="opacity:0;transition:opacity .5s">
+            The <span class="cite">validate_token</span> function in <span class="cite">auth/tokens.py:42</span> is called by 3 nodes: <span class="cite">AuthService._verify</span>, <span class="cite">api/deps.py::get_current_user_id</span>, and <span class="cite">orchestrator/qna_chat.py:88</span>. All are in community 2 (auth cluster). Safe to refactor — no cross-community callers.
+          </div>
+          <div class="ar-ctx-note" id="ar-note" style="opacity:0;transition:opacity .5s">Answer grounded in the graph · 0 files read · 8% context used</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CHAT -->
+<section id="chat">
+  <div class="inner">
+    <div class="chat-grid">
+      <div class="reveal">
+        <div class="sec-label">QnA Playground</div>
+        <h2 class="sec-title">Ask your codebase anything</h2>
+        <p class="sec-sub">Multi-turn WebSocket chat, grounded in the live graph. Every answer cites specific nodes and files — not hallucinated references.</p>
+        <div class="chat-feats">
+          <div class="chat-feat"><div class="feat-dot"></div><span><strong>Streaming responses</strong> — answers appear word by word</span></div>
+          <div class="chat-feat"><div class="feat-dot"></div><span><strong>Node citations</strong> — every claim links to a real file:line</span></div>
+          <div class="chat-feat"><div class="feat-dot"></div><span><strong>Community awareness</strong> — understands cluster relationships</span></div>
+          <div class="chat-feat"><div class="feat-dot"></div><span><strong>Multi-turn memory</strong> — history stays in context across the session</span></div>
+        </div>
+      </div>
+      <div class="chat-window reveal reveal-delay-2">
+        <div class="chat-head">
+          <div class="chat-head-ava">M</div>
+          <div><div class="chat-head-name">Meridian Playground</div><div class="chat-head-sub">Graph-grounded QnA</div></div>
+          <div class="chat-online"></div>
+        </div>
+        <div class="chat-msgs" id="chat-msgs">
+          <div class="chat-typing" id="chat-typing"><div class="tyd"></div><div class="tyd"></div><div class="tyd"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NUMBERS -->
+<section id="numbers" style="padding:5rem 3.5rem">
+  <div class="inner">
+    <div class="nums-grid">
+      <div class="reveal"><span class="num-n" data-count="88" data-suffix="%">0%</span><div class="num-l">Refs resolved without any LLM call</div></div>
+      <div class="reveal reveal-delay-1"><span class="num-n" data-count="21">0</span><div class="num-l">Programming languages recognized by tree-sitter</div></div>
+      <div class="reveal reveal-delay-2"><span class="num-n" data-count="3" data-suffix=" pass">0</span><div class="num-l">Parsing pipeline stages, no wasted tokens</div></div>
+      <div class="reveal reveal-delay-3"><span class="num-n" data-zero="Zero" data-count="0">—</span><div class="num-l">Local install required — just a GitHub URL</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- TOOLS -->
+<section id="tools">
+  <div class="inner">
+    <div class="sec-label reveal">Skill Export</div>
+    <h2 class="sec-title reveal">Bring the graph to your AI tool</h2>
+    <p class="sec-sub reveal">One click generates a context file baked from the live graph. Drop it into your IDE — your AI assistant immediately understands your entire codebase structure.</p>
+    <div class="tools-grid">
+
+      <!-- Claude Code -->
+      <div class="tool-card reveal">
+        <div class="tool-logo" style="background:#1a1a2e;overflow:hidden;padding:6px">
+          <img src="https://unpkg.com/@lobehub/icons-static-png@latest/light/claudecode-color.png" alt="Claude Code" width="40" height="40" style="width:40px;height:40px;object-fit:contain;border-radius:8px" onerror="this.src='https://logo.clearbit.com/anthropic.com'">
+        </div>
+        <div class="tool-name">Claude Code</div>
+        <div class="tool-path">.claude/commands/{repo}.md</div>
+        <div class="tool-desc">Slash command with full graph context. Works with Claude Sonnet and Opus in any project.</div>
+      </div>
+
+      <!-- Cursor -->
+      <div class="tool-card reveal reveal-delay-1">
+        <div class="tool-logo" style="background:#1a1a2e;overflow:hidden;padding:6px">
+          <img src="https://cursor.com/apple-touch-icon.png" alt="Cursor" width="40" height="40" style="width:40px;height:40px;object-fit:contain;border-radius:8px" onerror="this.src='https://logo.clearbit.com/cursor.com'">
+        </div>
+        <div class="tool-name">Cursor</div>
+        <div class="tool-path">.cursor/rules/{repo}-context.mdc</div>
+        <div class="tool-desc">MDC rule file with frontmatter. Cursor picks it up automatically on project open.</div>
+      </div>
+
+      <!-- GitHub Copilot -->
+      <div class="tool-card reveal reveal-delay-2">
+        <div class="tool-logo" style="background:#1a1a2e;overflow:hidden;padding:6px">
+          <img src="https://unpkg.com/@lobehub/icons-static-png@1.91.0/light/copilot-color.png" alt="GitHub Copilot" width="40" height="40" style="width:40px;height:40px;object-fit:contain;border-radius:8px" onerror="this.src='https://logo.clearbit.com/github.com'">
+        </div>
+        <div class="tool-name">GitHub Copilot</div>
+        <div class="tool-path">.github/copilot-instructions.md</div>
+        <div class="tool-desc">Always-on instructions. Copilot reads this on every chat turn in your IDE automatically.</div>
+      </div>
+
+      <!-- Windsurf -->
+      <div class="tool-card reveal reveal-delay-3">
+        <div class="tool-logo" style="background:#1a1a2e;overflow:hidden;padding:6px">
+          <img src="https://windsurf.com/favicon.png" alt="Windsurf" width="40" height="40" style="width:40px;height:40px;object-fit:contain;border-radius:8px" onerror="this.src='https://logo.clearbit.com/codeium.com'">
+        </div>
+        <div class="tool-name">Windsurf</div>
+        <div class="tool-path">.windsurfrules</div>
+        <div class="tool-desc">Global rules file. Windsurf injects this into every Cascade session automatically.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta">
+  <div class="cta-glow"></div>
+  <div class="inner" style="text-align:center">
+    <h2 class="cta-h reveal">
+      <span class="g">Your codebase</span><br>is waiting.
+    </h2>
+    <p class="cta-sub reveal">No install. No config. Just a GitHub repo URL and a personal access token. Your graph is ready in seconds.</p>
+    <div class="cta-code reveal">
+      <div class="cm"># That's literally it.</div>
+      <div><span class="kw">POST</span> /repos/sync</div>
+      <div>X-GitHub-PAT: ghp_xxxx</div>
+      <div>{ "repo_url": "github.com/you/repo" }</div>
+      <div style="margin-top:.75rem;color:var(--green)">→ Graph building... ready in ~30s</div>
+    </div>
+    <div class="cta-btns reveal">
+      <a href="https://github.com/arkapatra31/meridian" class="btn-primary" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.44 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        Get started on GitHub
+      </a>
+      <a href="#beta" class="btn-ghost">See supported languages</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="foot-logo">Meridian</div>
+  <div class="foot-links">
+    <a href="https://github.com/arkapatra31/meridian" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://github.com/arkapatra31/meridian/issues" target="_blank" rel="noopener">Issues</a>
+    <a href="#beta">Beta languages</a>
+  </div>
+  <div class="foot-cr">Public Beta · Python · Java · JavaScript</div>
+</footer>
+
+<script>
+const PI2=Math.PI*2;
+const lerp=(a,b,t)=>a+(b-a)*t;
+const raf=requestAnimationFrame.bind(window);
+
+// ── CURSOR ────────────────────────────────────────────────────
+(function(){
+  const dot=document.getElementById('cur-dot');
+  const ring=document.getElementById('cur-ring');
+  let mx=0,my=0,rx=0,ry=0;
+  document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;dot.style.left=mx+'px';dot.style.top=my+'px'},{passive:true});
+  function tick(){rx=lerp(rx,mx,.1);ry=lerp(ry,my,.1);ring.style.left=rx+'px';ring.style.top=ry+'px';raf(tick)}
+  tick();
+  document.querySelectorAll('a,button').forEach(el=>{
+    el.addEventListener('mouseenter',()=>ring.classList.add('big'));
+    el.addEventListener('mouseleave',()=>ring.classList.remove('big'));
+  });
+})();
+
+// ── NAV SCROLL ────────────────────────────────────────────────
+window.addEventListener('scroll',()=>document.getElementById('nav').classList.toggle('scrolled',scrollY>60),{passive:true});
+
+// ── HERO TITLE CHARS ──────────────────────────────────────────
+(function(){
+  function make(str,el,baseDelay){
+    str.split('').forEach((ch,i)=>{
+      const sp=document.createElement('span');
+      sp.className='char';sp.textContent=ch===' '?' ':ch;
+      sp.style.animationDelay=(baseDelay+i*38)+'ms';
+      el.appendChild(sp);
+    });
+  }
+  make('Navigate code,',document.getElementById('hero-l1'),180);
+  make('not chaos.',document.getElementById('hero-l2'),700);
+})();
+
+// ── BACKGROUND GRAPH — continuously building, camera zooms with scroll ───
+(function(){
+  const c=document.getElementById('bg-canvas');
+  const ctx=c.getContext('2d');
+  const dpr=Math.min(devicePixelRatio,2);
+  let W,H;
+  function resize(){
+    W=window.innerWidth;H=window.innerHeight;
+    c.width=W*dpr;c.height=H*dpr;
+    c.style.width=W+'px';c.style.height=H+'px';
+  }
+  resize();
+  window.addEventListener('resize',resize,{passive:true});
+
+  // World is 0..1 in both axes, camera pans through it
+  // Communities spread across the world
+  const COMMS=[
+    {cx:.18,cy:.25,col:'#4361ee',r:.10},
+    {cx:.50,cy:.12,col:'#4cc9f0',r:.09},
+    {cx:.82,cy:.25,col:'#7c3aed',r:.10},
+    {cx:.15,cy:.75,col:'#22c55e',r:.09},
+    {cx:.50,cy:.88,col:'#f8c94f',r:.09},
+    {cx:.85,cy:.75,col:'#f97316',r:.10},
+    {cx:.35,cy:.50,col:'#2563eb',r:.08},
+    {cx:.65,cy:.50,col:'#06b6d4',r:.08},
+  ];
+
+  // Generate static nodes
+  const nodes=[];
+  COMMS.forEach((cm,ci)=>{
+    const n=10+Math.floor(Math.random()*8);
+    for(let i=0;i<n;i++){
+      const angle=(i/n)*PI2+(Math.random()-.5)*.6;
+      const rad=.02+Math.random()*cm.r*.8;
+      nodes.push({
+        wx:cm.cx+Math.cos(angle)*rad,
+        wy:cm.cy+Math.sin(angle)*rad,
+        com:ci,col:cm.col,
+        r:1.5+Math.random()*2.5,
+        isHub:Math.random()<.06,
+        si:nodes.length,
+        op:0,
+      });
+    }
+  });
+  // Assign random build order
+  const order=[...nodes].sort(()=>Math.random()-.5);
+  order.forEach((n,i)=>n.si=i);
+  nodes.filter(n=>n.isHub).forEach(n=>n.r=4+Math.random()*2);
+
+  // Edges
+  const edges=[];
+  for(let i=0;i<nodes.length;i++){
+    for(let j=i+1;j<nodes.length;j++){
+      const a=nodes[i],b=nodes[j];
+      const dx=a.wx-b.wx,dy=a.wy-b.wy,d=Math.sqrt(dx*dx+dy*dy);
+      const same=a.com===b.com;
+      if((same&&d<.12&&Math.random()<.38)||(!same&&d<.05&&Math.random()<.5))
+        edges.push({a:i,b:j});
+    }
+  }
+
+  // Camera — normalized world coords
+  const cam={x:.5,y:.5,z:1,tx:.5,ty:.5,tz:1};
+
+  // Section camera targets
+  const SC={
+    'hero':        {x:.5,  y:.5,  z:1.0},
+    'before-after':{x:.18, y:.25, z:2.5},
+    'transform':   {x:.5,  y:.12, z:2.2},
+    'beta':        {x:.82, y:.25, z:2.0},
+    'pipeline':    {x:.82, y:.25, z:2.4},
+    'graph-viz':   {x:.5,  y:.5,  z:1.0},
+    'agent-relief':{x:.15, y:.75, z:2.5},
+    'chat':        {x:.5,  y:.88, z:2.0},
+    'numbers':     {x:.5,  y:.5,  z:1.2},
+    'tools':       {x:.85, y:.75, z:2.2},
+    'cta':         {x:.5,  y:.5,  z:1.0},
+  };
+
+  window._bgFocus=function(id){
+    const t=SC[id];
+    if(t){cam.tx=t.x;cam.ty=t.y;cam.tz=t.z;}
+  };
+
+  // Build cycle
+  const CYCLE=11000,BUILD=.55,HOLD=.72;
+  let t0=performance.now();
+  const N=nodes.length;
+
+  function ws(wx,wy){
+    // World to screen
+    const vw=1/cam.z,vh=1/cam.z;
+    return{
+      x:((wx-cam.x)/vw+.5)*W*dpr,
+      y:((wy-cam.y)/vh+.5)*H*dpr
+    };
+  }
+  function onscreen(wx,wy,m=60){
+    const p=ws(wx,wy);
+    return p.x>-m&&p.x<W*dpr+m&&p.y>-m&&p.y<H*dpr+m;
+  }
+
+  function draw(now){
+    ctx.clearRect(0,0,W*dpr,H*dpr);
+
+    // Lerp camera
+    cam.x=lerp(cam.x,cam.tx,.025);
+    cam.y=lerp(cam.y,cam.ty,.025);
+    cam.z=lerp(cam.z,cam.tz,.025);
+
+    // Build cycle opacity
+    const frac=((now-t0)%CYCLE)/CYCLE;
+    nodes.forEach(n=>{
+      const thresh=(n.si/N)*BUILD;
+      if(frac<BUILD){
+        n.op=frac>thresh?Math.min(1,(frac-thresh)/(BUILD/N)):0;
+      }else if(frac<HOLD){
+        n.op=Math.min(1,n.op+.06);
+      }else{
+        const fp=(frac-HOLD)/(1-HOLD);
+        n.op=Math.max(0,1-fp*1.3);
+      }
+    });
+
+    // Community halos
+    COMMS.forEach(cm=>{
+      if(!onscreen(cm.cx,cm.cy,200))return;
+      const p=ws(cm.cx,cm.cy);
+      const r=cm.r*cam.z*W*dpr*.6;
+      const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r);
+      g.addColorStop(0,cm.col+'07');g.addColorStop(1,'transparent');
+      ctx.beginPath();ctx.arc(p.x,p.y,r,0,PI2);ctx.fillStyle=g;ctx.fill();
+    });
+
+    // Edges
+    edges.forEach(e=>{
+      const a=nodes[e.a],b=nodes[e.b];
+      const alpha=Math.min(a.op,b.op)*.22;
+      if(alpha<.01)return;
+      if(!onscreen(a.wx,a.wy)&&!onscreen(b.wx,b.wy))return;
+      const pa=ws(a.wx,a.wy),pb=ws(b.wx,b.wy);
+      ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);
+      ctx.strokeStyle=a.col;ctx.globalAlpha=alpha;
+      ctx.lineWidth=dpr;ctx.stroke();
+    });
+    ctx.globalAlpha=1;
+
+    // Nodes
+    nodes.forEach(n=>{
+      if(n.op<.02)return;
+      if(!onscreen(n.wx,n.wy))return;
+      const p=ws(n.wx,n.wy);
+      const r=Math.max(1,n.r*cam.z*dpr*.55);
+      if(n.isHub){
+        const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r*4);
+        g.addColorStop(0,n.col+'45');g.addColorStop(1,'transparent');
+        ctx.beginPath();ctx.arc(p.x,p.y,r*4,0,PI2);
+        ctx.fillStyle=g;ctx.globalAlpha=n.op*.9;ctx.fill();
+      }
+      ctx.beginPath();ctx.arc(p.x,p.y,r,0,PI2);
+      ctx.fillStyle=n.col;ctx.globalAlpha=n.op*.85;ctx.fill();
+      ctx.globalAlpha=1;
+    });
+
+    raf(draw);
+  }
+  raf(draw);
+
+  // IntersectionObserver — focus camera on active section
+  const io=new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting&&e.intersectionRatio>.35)window._bgFocus(e.target.id);
+    });
+  },{threshold:[.35,.6]});
+  ['hero','before-after','transform','beta','pipeline','graph-viz','agent-relief','chat','numbers','tools','cta'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)io.observe(el);
+  });
+})();
+
+// ── HERO CANVAS — Orbital Constellation ───────────────────────
+(function(){
+  const c=document.getElementById('hero-canvas');
+  const ctx=c.getContext('2d');
+  const dpr=Math.min(devicePixelRatio,2);
+  let W,H;
+  function resize(){W=c.offsetWidth;H=c.offsetHeight;c.width=W*dpr;c.height=H*dpr;ctx.scale(dpr,dpr)}
+  resize();window.addEventListener('resize',resize,{passive:true});
+
+  const RINGS=[
+    {count:6, r:110,speed:.00025,phase:0,  nodeR:3,  col:'#4361ee'},
+    {count:10,r:195,speed:.00015,phase:1.2,nodeR:2.5,col:'#4cc9f0'},
+    {count:16,r:290,speed:.00008,phase:2.5,nodeR:2,  col:'#7c3aed'},
+    {count:22,r:390,speed:.00004,phase:0.8,nodeR:1.5,col:'#2563eb'},
+  ];
+  const nodes=[];
+  RINGS.forEach(ring=>{
+    for(let i=0;i<ring.count;i++){
+      nodes.push({ring,ao:(PI2/ring.count)*i,active:Math.random()<.6});
+    }
+  });
+
+  let mx=W/2,my=H/2,t=0;
+  document.addEventListener('mousemove',e=>{const r=c.getBoundingClientRect();mx=e.clientX-r.left;my=e.clientY-r.top},{passive:true});
+
+  function pos(n,cx,cy){
+    const a=n.ring.phase+n.ring.speed*t+n.ao;
+    return{x:cx+Math.cos(a)*n.ring.r,y:cy+Math.sin(a)*n.ring.r};
+  }
+
+  function frame(){
+    ctx.clearRect(0,0,W,H);t++;
+    const cx=W/2+(W/2-mx)*.04;const cy=H/2+(H/2-my)*.04;
+
+    RINGS.forEach(ring=>{
+      ctx.beginPath();ctx.arc(cx,cy,ring.r,0,PI2);
+      ctx.strokeStyle=ring.col;ctx.globalAlpha=.04;ctx.lineWidth=1;ctx.stroke();
+    });
+    ctx.globalAlpha=1;
+
+    for(let i=0;i<nodes.length;i++){
+      const a=nodes[i],pa=pos(a,cx,cy);
+      for(let j=i+1;j<nodes.length;j++){
+        const b=nodes[j];
+        if(Math.abs(RINGS.indexOf(a.ring)-RINGS.indexOf(b.ring))>1)continue;
+        const pb=pos(b,cx,cy);
+        const dx=pb.x-pa.x,dy=pb.y-pa.y,d=Math.sqrt(dx*dx+dy*dy);
+        if(d>90)continue;
+        ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);
+        ctx.strokeStyle=a.ring.col;ctx.globalAlpha=(1-d/90)*.18;ctx.lineWidth=.7;ctx.stroke();
+      }
+    }
+    ctx.globalAlpha=1;
+
+    nodes.forEach(n=>{
+      const p=pos(n,cx,cy);const al=n.active?.7:.25;
+      const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,n.ring.nodeR*4);
+      g.addColorStop(0,n.ring.col+'50');g.addColorStop(1,'transparent');
+      ctx.beginPath();ctx.arc(p.x,p.y,n.ring.nodeR*4,0,PI2);ctx.fillStyle=g;ctx.globalAlpha=al*.7;ctx.fill();
+      ctx.beginPath();ctx.arc(p.x,p.y,n.ring.nodeR,0,PI2);ctx.fillStyle=n.ring.col;ctx.globalAlpha=al;ctx.fill();
+    });
+    ctx.globalAlpha=1;
+    raf(frame);
+  }
+  frame();
+})();
+
+
+// ── CODE → GRAPH CANVAS ───────────────────────────────────────
+(function(){
+  const codeData=[
+    [{t:'kw',v:'import'},{t:'',v:' jwt, bcrypt'}],
+    [{t:'',v:''}],
+    [{t:'kw',v:'class'},{t:'cn',v:' AuthService'},{t:'',v:':'}],
+    [{t:'',v:'  '},{t:'kw',v:'def'},{t:'fn',v:' __init__'},{t:'',v:'(self):'}],
+    [{t:'',v:'    self.db = '},{t:'fn',v:'Database'},{t:'',v:'()'}],
+    [{t:'',v:'  '},{t:'kw',v:'def'},{t:'fn',v:' validate_token'},{t:'',v:'(self, tok):'}],
+    [{t:'',v:'    payload = '},{t:'fn',v:'jwt.decode'},{t:'',v:'(tok)'}],
+    [{t:'',v:'    '},{t:'kw',v:'return'},{t:'',v:' self.'},{t:'fn',v:'_verify'},{t:'',v:'(payload)'}],
+    [{t:'',v:'  '},{t:'kw',v:'def'},{t:'fn',v:' _verify'},{t:'',v:'(self, p):'}],
+    [{t:'',v:'    '},{t:'kw',v:'return'},{t:'',v:' bcrypt.'},{t:'fn',v:'check'},{t:'',v:'(p)'}],
+  ];
+  const area=document.getElementById('code-area');
+  codeData.forEach((toks,i)=>{
+    const row=document.createElement('div');row.className='code-line-row';row.id=`cr${i}`;
+    const ln=document.createElement('span');ln.className='ln';ln.textContent=i+1;row.appendChild(ln);
+    toks.forEach(tok=>{const sp=document.createElement('span');if(tok.t)sp.className=tok.t;sp.textContent=tok.v;row.appendChild(sp);});
+    area.appendChild(row);
+  });
+
+  const c=document.getElementById('tx-canvas');
+  const ctx=c.getContext('2d');
+  const dpr=Math.min(devicePixelRatio,2);
+  function resize(){
+    const pr=c.parentElement.getBoundingClientRect();
+    c.width=pr.width*dpr;c.height=pr.height*dpr;
+    c.style.width=pr.width+'px';c.style.height=pr.height+'px';
+    ctx.scale(dpr,dpr);
+  }
+  const GN=[
+    {label:'AuthService',t:'class',rx:.5,ry:.22,color:'#4361ee',r:13},
+    {label:'__init__',t:'method',rx:.22,ry:.48,color:'#4cc9f0',r:8},
+    {label:'validate_token',t:'method',rx:.78,ry:.48,color:'#4cc9f0',r:8},
+    {label:'_verify',t:'method',rx:.5,ry:.72,color:'#4cc9f0',r:8},
+    {label:'Database',t:'class',rx:.15,ry:.72,color:'#7c3aed',r:9},
+    {label:'jwt',t:'module',rx:.82,ry:.28,color:'#6b6b8a',r:7},
+    {label:'bcrypt',t:'module',rx:.72,ry:.85,color:'#6b6b8a',r:7},
+  ];
+  const GE=[{f:0,t:1},{f:0,t:2},{f:0,t:3},{f:1,t:4},{f:2,t:5},{f:3,t:6}];
+  GN.forEach(n=>{n.alpha=0;n.targetAlpha=0});GE.forEach(e=>e.progress=0);
+  let phase=0,ft=0;
+  const PNODE=70,PEDGE=60,PHOLD=100,PFADE=35;
+  let litLine=-1;
+  const NODE_ORDER=[0,1,4,2,5,3,6];
+  function gp(n,W,H){return{x:n.rx*(W-60)+30,y:n.ry*(H-60)+30}}
+  function tick(){
+    const W=c.width/dpr,H=c.height/dpr;
+    ctx.clearRect(0,0,W,H);
+    if(phase===0){
+      const ni=Math.min(Math.floor(ft/PNODE*NODE_ORDER.length),NODE_ORDER.length-1);
+      for(let i=0;i<=ni;i++)GN[NODE_ORDER[i]].targetAlpha=1;
+      litLine=Math.min(Math.floor(ft/PNODE*(codeData.length-1)),codeData.length-1);
+      ft++;if(ft>=PNODE){phase=1;ft=0}
+    }else if(phase===1){
+      const prog=ft/PEDGE;GE.forEach(e=>e.progress=Math.min(1,prog));
+      litLine=codeData.length-1;ft++;if(ft>=PEDGE){phase=2;ft=0}
+    }else if(phase===2){ft++;if(ft>=PHOLD){phase=3;ft=0}}
+    else{
+      GN.forEach(n=>n.targetAlpha=0);GE.forEach(e=>e.progress=Math.max(0,e.progress-1/PFADE));
+      litLine=-1;ft++;if(ft>=PFADE){phase=0;ft=0;GN.forEach(n=>n.alpha=0)}
+    }
+    GN.forEach(n=>n.alpha=lerp(n.alpha,n.targetAlpha,.06));
+    document.querySelectorAll('.code-line-row').forEach((el,i)=>el.classList.toggle('lit',i===litLine));
+    GE.forEach(e=>{
+      if(e.progress<=0)return;
+      const a=GN[e.f],b=GN[e.t];const pa=gp(a,W,H),pb=gp(b,W,H);
+      const ex=pa.x+(pb.x-pa.x)*e.progress,ey=pa.y+(pb.y-pa.y)*e.progress;
+      ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(ex,ey);
+      ctx.strokeStyle=a.color;ctx.globalAlpha=.5*Math.min(a.alpha,b.alpha);ctx.lineWidth=1.5;ctx.stroke();ctx.globalAlpha=1;
+    });
+    GN.forEach(n=>{
+      if(n.alpha<.01)return;
+      const p=gp(n,W,H);
+      const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,n.r*3.5);
+      g.addColorStop(0,n.color+'55');g.addColorStop(1,'transparent');
+      ctx.beginPath();ctx.arc(p.x,p.y,n.r*3.5,0,PI2);ctx.fillStyle=g;ctx.globalAlpha=n.alpha;ctx.fill();
+      ctx.beginPath();ctx.arc(p.x,p.y,n.r,0,PI2);ctx.fillStyle=n.color;ctx.globalAlpha=n.alpha;ctx.fill();
+      ctx.fillStyle='#fff';ctx.globalAlpha=n.alpha*.85;ctx.font=`600 ${n.r>9?10:8}px Inter,sans-serif`;ctx.textAlign='center';
+      ctx.fillText(n.label,p.x,p.y+n.r+11);ctx.globalAlpha=1;
+    });
+    raf(tick);
+  }
+  const obs=new IntersectionObserver(entries=>{
+    if(entries[0].isIntersecting){resize();tick();obs.disconnect()}
+  },{threshold:.2});
+  obs.observe(document.getElementById('transform'));
+})();
+
+// ── PIPELINE LIGHT-UP ─────────────────────────────────────────
+(function(){
+  const passes=[{el:document.getElementById('pass-1'),d:0},{el:document.getElementById('pass-2'),d:700},{el:document.getElementById('pass-3'),d:1400}];
+  const obs=new IntersectionObserver(entries=>{
+    if(entries[0].isIntersecting){passes.forEach(p=>setTimeout(()=>p.el.classList.add('lit'),p.d));obs.disconnect()}
+  },{threshold:.3});
+  obs.observe(document.getElementById('pipeline'));
+})();
+
+// ── MAIN GRAPH CANVAS — interactive physics ───────────────────
+(function(){
+  const c=document.getElementById('gv-canvas');
+  const ctx=c.getContext('2d');
+  const dpr=Math.min(devicePixelRatio,2);
+  let W,H,started=false;
+  function resize(){W=c.offsetWidth;H=c.offsetHeight;c.width=W*dpr;c.height=H*dpr;ctx.scale(dpr,dpr)}
+  resize();window.addEventListener('resize',resize,{passive:true});
+  const NC=120,NCOM=6;
+  const CCOLS=['#4361ee','#4cc9f0','#7c3aed','#2563eb','#06b6d4','#8b5cf6'];
+  let mx=W/2,my=H/2;
+  class N{
+    constructor(i){
+      this.id=i;this.com=Math.floor(i/NC*NCOM);
+      this.god=Math.random()<.05;this.orphan=!this.god&&Math.random()<.08;
+      this.color=this.god?'#f8c94f':this.orphan?'#2a2a4a':CCOLS[this.com];
+      this.r=this.god?8:this.orphan?2.5:Math.random()*3+2;
+      const a=(this.com/NCOM)*PI2;const cr=Math.min(W,H)*.27;
+      this.x=W/2+Math.cos(a)*cr+(Math.random()-.5)*90;
+      this.y=H/2+Math.sin(a)*cr+(Math.random()-.5)*90;
+      this.vx=(Math.random()-.5)*.3;this.vy=(Math.random()-.5)*.3;
+      this.alpha=0;this.gt=Math.random()*PI2;
+    }
+    update(ns){
+      this.alpha=Math.min(1,this.alpha+.015);this.gt+=.03;
+      const dx=this.x-mx,dy=this.y-my,d=Math.sqrt(dx*dx+dy*dy)+1;
+      if(d<220){const f=((220-d)/220)*2.5;this.vx+=dx/d*f;this.vy+=dy/d*f}
+      const a=(this.com/NCOM)*PI2,cr=Math.min(W,H)*.27;
+      this.vx+=(W/2+Math.cos(a)*cr-this.x)*.003;
+      this.vy+=(H/2+Math.sin(a)*cr-this.y)*.003;
+      this.vx+=(W/2-this.x)*.0004;this.vy+=(H/2-this.y)*.0004;
+      for(const m of ns){
+        if(m===this)continue;
+        const dx2=this.x-m.x,dy2=this.y-m.y,d2=dx2*dx2+dy2*dy2+1;
+        if(d2<7000){const f=110/d2;this.vx+=dx2*f;this.vy+=dy2*f}
+      }
+      this.vx*=.9;this.vy*=.9;
+      this.x+=this.vx;this.y+=this.vy;
+      if(this.x<this.r)this.x=this.r;if(this.x>W-this.r)this.x=W-this.r;
+      if(this.y<this.r)this.y=this.r;if(this.y>H-this.r)this.y=H-this.r;
+    }
+  }
+  const ns=Array.from({length:NC},(_,i)=>new N(i));
+  const es=[];
+  for(let i=0;i<NC;i++)for(let j=i+1;j<NC;j++)
+    if(ns[i].com===ns[j].com&&Math.random()<.13)es.push([i,j]);
+  const gods=ns.filter(n=>n.god);
+  gods.forEach(g=>{
+    const others=ns.filter(n=>n.com!==g.com&&!n.orphan);
+    for(let i=0;i<Math.min(5,others.length);i++)es.push([g.id,others[Math.floor(Math.random()*others.length)].id]);
+  });
+  document.getElementById('st-nodes').textContent=NC;
+  document.getElementById('st-edges').textContent=es.length;
+  document.getElementById('st-comm').textContent=NCOM;
+  document.addEventListener('mousemove',e=>{const r=c.getBoundingClientRect();mx=e.clientX-r.left;my=e.clientY-r.top},{passive:true});
+  function frame(){
+    ctx.clearRect(0,0,W,H);
+    for(let cm=0;cm<NCOM;cm++){
+      const a=(cm/NCOM)*PI2,cr=Math.min(W,H)*.27;
+      const hx=W/2+Math.cos(a)*cr,hy=H/2+Math.sin(a)*cr;
+      const g=ctx.createRadialGradient(hx,hy,0,hx,hy,130);
+      g.addColorStop(0,CCOLS[cm]+'07');g.addColorStop(1,'transparent');
+      ctx.beginPath();ctx.arc(hx,hy,130,0,PI2);ctx.fillStyle=g;ctx.fill();
+    }
+    for(const [a,b] of es){
+      const na=ns[a],nb=ns[b];
+      const dx=nb.x-na.x,dy=nb.y-na.y,d=Math.sqrt(dx*dx+dy*dy);
+      if(d>380)continue;
+      ctx.beginPath();ctx.moveTo(na.x,na.y);ctx.lineTo(nb.x,nb.y);
+      ctx.strokeStyle=na.color;ctx.globalAlpha=(1-d/380)*.12*Math.min(na.alpha,nb.alpha);ctx.lineWidth=.7;ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+    for(const n of ns){
+      n.update(ns);
+      if(n.god){
+        const pulse=.5+.5*Math.sin(n.gt);
+        ctx.beginPath();ctx.arc(n.x,n.y,n.r*3+pulse*3,0,PI2);
+        ctx.strokeStyle='#f8c94f';ctx.globalAlpha=.25*n.alpha*pulse;ctx.lineWidth=1.5;ctx.stroke();
+      }
+      const g2=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r*4);
+      g2.addColorStop(0,n.color+(n.god?'70':'28'));g2.addColorStop(1,'transparent');
+      ctx.beginPath();ctx.arc(n.x,n.y,n.r*4,0,PI2);ctx.fillStyle=g2;ctx.globalAlpha=n.alpha;ctx.fill();
+      ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,PI2);ctx.fillStyle=n.color;ctx.globalAlpha=n.alpha;ctx.fill();
+      ctx.globalAlpha=1;
+    }
+  }
+  const obs=new IntersectionObserver(entries=>{
+    if(entries[0].isIntersecting&&!started){started=true;(function loop(){frame();raf(loop)})()}
+  },{threshold:.1});
+  obs.observe(c);
+})();
+
+// ── AGENT RELIEF ANIMATION ────────────────────────────────────
+(function(){
+  let ran=false;
+  const obs=new IntersectionObserver(entries=>{
+    if(entries[0].isIntersecting&&!ran){
+      ran=true;
+      const fill=document.getElementById('ctx-fill');
+      const pct=document.getElementById('ctx-pct');
+      const files=['af1','af2','af3','af4','af5'];
+      const widths=[12,28,42,60,80];
+      let step=0;
+      function nextFile(){
+        if(step>=files.length){
+          setTimeout(()=>{
+            document.getElementById('af-err').style.display='flex';
+            fill.style.width='97%';pct.textContent='97%';
+            fill.style.background='#ef4444';
+          },600);return;
+        }
+        const f=document.getElementById(files[step]);
+        if(f)f.style.display='flex';
+        fill.style.width=widths[step]+'%';pct.textContent=widths[step]+'%';
+        step++;setTimeout(nextFile,900);
+      }
+      nextFile();
+      setTimeout(()=>{
+        document.getElementById('ar-answer').style.opacity='1';
+        document.getElementById('ar-note').style.opacity='1';
+      },2800);
+      obs.disconnect();
+    }
+  },{threshold:.3});
+  obs.observe(document.getElementById('agent-relief'));
+})();
+
+// ── CHAT DEMO ─────────────────────────────────────────────────
+(function(){
+  const MSGS=[
+    {r:'user',t:'Which functions call validate_token?'},
+    {r:'bot',t:'<span class="cite">validate_token</span> in <span class="cite">auth/tokens.py:42</span> is called by 3 nodes: <span class="cite">AuthService._verify</span>, <span class="cite">api/deps.py::get_current_user_id</span>, and <span class="cite">orchestrator/qna_chat.py:88</span>. All are in community 2 (auth cluster).'},
+    {r:'user',t:'Any god nodes in this cluster?'},
+    {r:'bot',t:'Yes — <span class="cite">AuthService</span> at <span class="cite">auth/service.py:12</span> is flagged as a god node. Its neighbours span 4 communities, with 18 edges total — the highest-degree hub in the graph.'},
+  ];
+  const container=document.getElementById('chat-msgs');
+  const typing=document.getElementById('chat-typing');
+  let idx=0,ran=false;
+  function addMsg(msg){
+    const d=document.createElement('div');
+    d.className=`chat-m ${msg.r}`;d.innerHTML=msg.t;
+    container.insertBefore(d,typing);container.scrollTop=container.scrollHeight;
+    requestAnimationFrame(()=>d.classList.add('visible'));
+  }
+  function step(){
+    if(idx>=MSGS.length)return;
+    const m=MSGS[idx++];
+    if(m.r==='user'){
+      addMsg(m);
+      if(idx<MSGS.length){
+        setTimeout(()=>{
+          typing.style.display='flex';container.scrollTop=container.scrollHeight;
+          setTimeout(()=>{typing.style.display='none';addMsg(MSGS[idx++]);setTimeout(step,3500)},1600);
+        },400);
+      }
+    }else{addMsg(m);setTimeout(step,200)}
+  }
+  const obs=new IntersectionObserver(entries=>{
+    if(entries[0].isIntersecting&&!ran){ran=true;setTimeout(step,600);obs.disconnect()}
+  },{threshold:.3});
+  obs.observe(document.getElementById('chat'));
+})();
+
+// ── COUNTER ANIMATION ─────────────────────────────────────────
+(function(){
+  function animCount(el,target,suffix,zero){
+    if(zero){el.textContent=zero;return}
+    let start=null;
+    function step(ts){
+      if(!start)start=ts;
+      const p=Math.min((ts-start)/1100,1);
+      const ease=1-Math.pow(1-p,4);
+      el.textContent=Math.round(ease*target)+(suffix||'');
+      if(p<1)raf(step);
+    }
+    raf(step);
+  }
+  const obs=new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(!e.isIntersecting)return;
+      const el=e.target;
+      animCount(el,parseInt(el.dataset.count)||0,el.dataset.suffix||'',el.dataset.zero||null);
+      obs.unobserve(el);
+    });
+  },{threshold:.5});
+  document.querySelectorAll('[data-count]').forEach(el=>obs.observe(el));
+})();
+
+// ── SCROLL REVEAL ─────────────────────────────────────────────
+(function(){
+  const obs=new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target)}
+    });
+  },{threshold:.12});
+  document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+})();
+</script>
+</body>
+</html>
