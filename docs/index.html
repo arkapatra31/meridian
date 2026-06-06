@@ -194,6 +194,34 @@ section#transform{background:rgba(4,4,10,.93)}
 .bm-row.visible .bm-fill{width:var(--w)}
 .bm-val{font-size:.76rem;color:var(--muted);min-width:96px;text-align:right;font-variant-numeric:tabular-nums}
 .bm-note{text-align:center;color:var(--muted);font-size:.72rem;line-height:1.65;margin:2.25rem auto 0;max-width:680px;opacity:.85}
+
+/* ── DIFFERENTIAL ENGINE ──────────────────────────────────── */
+.df-compare{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;max-width:880px;margin:2.75rem auto 0}
+.df-card{border:1px solid var(--border);border-radius:18px;padding:2rem;background:rgba(10,10,28,.55)}
+.df-new{border-color:rgba(67,97,238,.35);background:rgba(67,97,238,.06)}
+.df-tag{font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;margin-bottom:1rem}
+.df-tag.bad{color:#ef4444}
+.df-tag.good{color:var(--green)}
+.df-big{font-size:2rem;font-weight:900;letter-spacing:-.03em;margin-bottom:.75rem}
+.df-big.grad{background:linear-gradient(135deg,var(--blue),var(--cyan));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.df-card-desc{font-size:.86rem;color:var(--muted);line-height:1.65}
+.df-card-desc code,.df-foot code,.df-step code{font-family:'Menlo','Fira Code',monospace;font-size:.82em;color:var(--cyan);background:rgba(76,201,240,.08);padding:1px 5px;border-radius:5px}
+.df-files{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem;justify-content:center;max-width:880px;margin:2.5rem auto 0}
+.df-files-label{font-family:'Menlo','Fira Code',monospace;font-size:.78rem;color:var(--muted)}
+.df-chip{font-family:'Menlo','Fira Code',monospace;font-size:.74rem;color:var(--muted);background:rgba(255,255,255,.04);border:1px solid var(--border);padding:5px 11px;border-radius:8px;transition:all .4s}
+.df-chip.changed{color:var(--cyan);border-color:rgba(76,201,240,.4);background:rgba(76,201,240,.1)}
+.reveal.visible .df-chip.changed{animation:df-pulse 2.4s ease-in-out infinite}
+@keyframes df-pulse{0%,100%{box-shadow:0 0 0 0 rgba(76,201,240,0)}50%{box-shadow:0 0 14px 0 rgba(76,201,240,.45)}}
+.df-flow{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;max-width:1040px;margin:3rem auto 0}
+.df-step{background:rgba(16,16,42,.6);border:1px solid var(--border);border-radius:14px;padding:1.4rem 1.2rem;transition:border-color .3s,transform .3s}
+.df-step:hover{border-color:rgba(67,97,238,.35);transform:translateY(-3px)}
+.df-num{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--blue),var(--cyan));color:#fff;font-weight:800;font-size:.8rem;margin-bottom:.85rem}
+.df-step strong{display:block;font-size:.9rem;margin-bottom:.4rem}
+.df-step p{font-size:.75rem;color:var(--muted);line-height:1.6}
+.df-foot{text-align:center;color:var(--muted);font-size:.8rem;margin:2.5rem auto 0;max-width:700px;line-height:1.7}
+@media(max-width:900px){.df-compare{grid-template-columns:1fr}.df-flow{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.df-flow{grid-template-columns:1fr}}
+
 @media(max-width:640px){
   #benchmark{padding:5rem 1.25rem}
   .bm-bar-row{grid-template-columns:54px 1fr}
@@ -341,6 +369,7 @@ footer{padding:2.5rem 3.5rem;border-top:1px solid var(--border);display:flex;jus
     <a href="#before-after">Before &amp; After</a>
     <a href="#transform">How it works</a>
     <a href="#pipeline">Pipeline</a>
+    <a href="#diff">Differential</a>
     <a href="#agent-relief">Agent Relief</a>
     <a href="#benchmark">Benchmarks</a>
     <a href="#tools">Export</a>
@@ -493,6 +522,47 @@ footer{padding:2.5rem 3.5rem;border-top:1px solid var(--border);display:flex;jus
         <div class="pass-metric-l">Reaches the agent</div>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- DIFFERENTIAL ENGINE -->
+<section id="diff">
+  <div class="inner">
+    <div class="sec-label reveal">Architecture · Differential Engine</div>
+    <h2 class="sec-title reveal">Patch the graph.<br>Don't rebuild it.</h2>
+    <p class="sec-sub reveal">Most tools re-parse the entire repository on every push. Meridian re-parses only the files that changed, splices the delta into the stored tree, and re-clusters in place — the same graph, updated in seconds.</p>
+
+    <div class="df-compare">
+      <div class="df-card reveal">
+        <div class="df-tag bad">Other tools · every push</div>
+        <div class="df-big">O(whole&nbsp;repo)</div>
+        <div class="df-card-desc">Re-clone, re-parse every file, rebuild the graph from scratch. Minutes — and the cost scales with repo size, not with what you actually changed.</div>
+      </div>
+      <div class="df-card df-new reveal reveal-delay-1">
+        <div class="df-tag good">Meridian · every push</div>
+        <div class="df-big grad">O(changed&nbsp;files)</div>
+        <div class="df-card-desc">Diff <code>previous_sha..HEAD</code>, re-parse only the delta, mutate the stored tree in place. Seconds — the cost scales with your commit, not the codebase.</div>
+      </div>
+    </div>
+
+    <div class="df-files reveal">
+      <span class="df-files-label">git push →</span>
+      <span class="df-chip">auth/service.py</span>
+      <span class="df-chip changed">auth/tokens.py</span>
+      <span class="df-chip">graph_engine/builder.py</span>
+      <span class="df-chip changed">api/deps.py</span>
+      <span class="df-chip">+ 1,723 unchanged · skipped</span>
+    </div>
+
+    <div class="df-flow">
+      <div class="df-step reveal"><span class="df-num">1</span><strong>Detect</strong><p><code>git pull</code> → diff <code>previous_sha..HEAD</code>. No-op short-circuit if HEAD didn't move.</p></div>
+      <div class="df-step reveal reveal-delay-1"><span class="df-num">2</span><strong>Re-parse the delta</strong><p>Only added / modified / renamed files hit the parser (<code>parse_files</code>) — never the whole tree.</p></div>
+      <div class="df-step reveal reveal-delay-2"><span class="df-num">3</span><strong>Mutate in place</strong><p>Drop stale nodes &amp; edges, splice in the delta. The <code>tree_id</code> is preserved across syncs.</p></div>
+      <div class="df-step reveal reveal-delay-3"><span class="df-num">4</span><strong>Resolve only what moved</strong><p>The agent re-resolves just the delta's ambiguous refs. Carry-over references are left untouched.</p></div>
+      <div class="df-step reveal reveal-delay-4"><span class="df-num">5</span><strong>Re-cluster &amp; snapshot</strong><p>Rebuild the graph, re-run Leiden, append an immutable <code>graph_history</code> version.</p></div>
+    </div>
+
+    <p class="df-foot reveal">Same <code>graph_id</code>, same <code>tree_id</code> — mutated, never replaced. One <code>POST /repos/sync</code> endpoint picks FULL vs PATCH for you; every successful sync appends a versioned snapshot to <code>graph_history</code>.</p>
   </div>
 </section>
 
@@ -903,6 +973,7 @@ window.addEventListener('scroll',()=>document.getElementById('nav').classList.to
     'transform':   {x:.5,  y:.12, z:2.2},
     'beta':        {x:.82, y:.25, z:2.0},
     'pipeline':    {x:.82, y:.25, z:2.4},
+    'diff':        {x:.35, y:.50, z:2.2},
     'graph-viz':   {x:.5,  y:.5,  z:1.0},
     'agent-relief':{x:.15, y:.75, z:2.5},
     'benchmark':   {x:.65, y:.50, z:2.3},
@@ -1008,7 +1079,7 @@ window.addEventListener('scroll',()=>document.getElementById('nav').classList.to
       if(e.isIntersecting&&e.intersectionRatio>.35)window._bgFocus(e.target.id);
     });
   },{threshold:[.35,.6]});
-  ['hero','before-after','transform','beta','pipeline','graph-viz','agent-relief','benchmark','chat','numbers','tools','cta'].forEach(id=>{
+  ['hero','before-after','transform','beta','pipeline','diff','graph-viz','agent-relief','benchmark','chat','numbers','tools','cta'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)io.observe(el);
   });
