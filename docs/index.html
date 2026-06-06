@@ -3,8 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Meridian — Navigate code, not chaos.</title>
-<meta name="description" content="Meridian builds a living, queryable knowledge graph from any GitHub repository. Ask it anything. No install required.">
+<title>Meridian — Code Knowledge Graph for AI Coding Agents</title>
+<meta name="description" content="Turn any GitHub repo into a queryable code knowledge graph. Cut your AI agent's context-window tokens and cost. Tree-sitter, incremental builds, self-hosted.">
+<link rel="canonical" href="https://arkapatra31.github.io/meridian/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://arkapatra31.github.io/meridian/">
+<meta property="og:title" content="Meridian — Code Knowledge Graph for AI Coding Agents">
+<meta property="og:description" content="Turn any GitHub repo into a queryable code knowledge graph. Cut your AI agent's context-window tokens and cost. Tree-sitter, incremental builds, self-hosted.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Meridian — Code Knowledge Graph for AI Coding Agents">
+<meta name="twitter:description" content="Turn any GitHub repo into a queryable code knowledge graph. Cut your AI agent's context-window tokens and cost.">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -384,8 +392,8 @@ footer{padding:2.5rem 3.5rem;border-top:1px solid var(--border);display:flex;jus
   <div class="hero-content">
     <div class="hero-chip"><span class="chip-dot"></span>Open Beta · Python · Java · JavaScript</div>
     <h1 class="hero-h1">
-      <span class="l1" id="hero-l1"></span>
-      <span class="l2" id="hero-l2"></span>
+      <span class="l1" id="hero-l1">Code knowledge graphs</span>
+      <span class="l2" id="hero-l2">for AI coding agents</span>
     </h1>
     <p class="hero-sub anim">Point Meridian at any GitHub repository. Get back a living, queryable knowledge graph. Ask it anything — answers cite actual nodes and files.</p>
     <div class="hero-actions">
@@ -890,6 +898,7 @@ window.addEventListener('scroll',()=>document.getElementById('nav').classList.to
 // ── HERO TITLE CHARS ──────────────────────────────────────────
 (function(){
   function make(str,el,baseDelay){
+    el.textContent='';  // clear the crawlable fallback text before animating
     str.split('').forEach((ch,i)=>{
       const sp=document.createElement('span');
       sp.className='char';sp.textContent=ch===' '?' ':ch;
@@ -897,8 +906,8 @@ window.addEventListener('scroll',()=>document.getElementById('nav').classList.to
       el.appendChild(sp);
     });
   }
-  make('Navigate code,',document.getElementById('hero-l1'),180);
-  make('not chaos.',document.getElementById('hero-l2'),700);
+  make('Code knowledge graphs',document.getElementById('hero-l1'),180);
+  make('for AI coding agents',document.getElementById('hero-l2'),700);
 })();
 
 // ── BACKGROUND GRAPH — continuously building, camera zooms with scroll ───
