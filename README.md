@@ -37,7 +37,7 @@ Point Meridian at any GitHub repository and get back an interactive, queryable k
 ## Features
 
 - **Zero install for end users** — just provide a GitHub URL (and a PAT for private repos).
-- **Three-pass parsing** — tree-sitter (Pass 1) for deterministic AST extraction across 25 languages, a symbol-index workload reducer (Pass 1.5) that resolves the easy cross-file refs without an LLM call, and agent reasoning (Pass 2) for surgical resolution of what's left.
+- **Three-pass parsing** — tree-sitter (Pass 1) for deterministic AST extraction across 21 languages, a symbol-index workload reducer (Pass 1.5) that resolves the easy cross-file refs without an LLM call, and agent reasoning (Pass 2) for surgical resolution of what's left.
 - **Differential updates** — incremental graph patches in seconds via a built-in diff engine; no full rebuilds.
 - **Graph-grounded QnA** — multi-turn streaming chat with answers that cite specific nodes and files, not hallucinated references.
 - **Interactive visualization** — 3D WebGL-rendered force graph with semantic zoom, community coloring, and confidence-weighted edges.
@@ -69,7 +69,7 @@ graph TB
     end
 
     subgraph PARSING["Hybrid Parser  (C4)  ·  three-pass pipeline"]
-        C4a["C4a — Tree-sitter  Pass 1\n25 languages · EXTRACTED edges"]
+        C4a["C4a — Tree-sitter  Pass 1\n21 languages · EXTRACTED edges"]
         C4ab["C4ab — Workload Reducer  Pass 1.5\nsymbol-index · ≈88% resolved free"]
         C4b["C4b — Agent Reasoning  Pass 2\nAgent SDK · grep / glob / read\nINFERRED edges"]
         C4c["C4c — Tree Indexer\npersist · mutate · rehydrate"]
@@ -150,7 +150,7 @@ _Solid arrows = synchronous call / data flow. Dashed arrows = persistence reads/
 | Component | Technology | Role |
 | ----------- | ---------- | ------ |
 | C2: Orchestrator | Plain async Python + Agent SDK (inside C4b) | Coordinates pipeline; makes FULL vs PATCH decisions |
-| C4a: Tree-sitter (Pass 1) | `tree-sitter-language-pack` | Deterministic AST extraction across 25 languages → `EXTRACTED` edges |
+| C4a: Tree-sitter (Pass 1) | `tree-sitter-language-pack` | Deterministic AST extraction across 21 languages → `EXTRACTED` edges |
 | C4ab: Workload Reducer (Pass 1.5) | Symbol-index reducer (no LLM) | Resolves easy cross-file refs via project-wide symbol index → `EXTRACTED` edges |
 | C4b: Agent Reasoning (Pass 2) | Agent SDK tools | Resolves ambiguous edges with grep/glob/read → `INFERRED` edges |
 | C4c: Tree Indexer | SQLAlchemy + SQLite | Persists the C4a+C4ab+C4b parse tree to `trees`; mutated in place during PATCH |
