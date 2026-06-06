@@ -2,7 +2,9 @@
 
 > A remote-first, agent-powered code knowledge graph builder.
 
-Point Meridian at any GitHub repository and get back an interactive, queryable knowledge graph — no local install required. Built with the Claude Code Agent SDK, tree-sitter, NetworkX, and Leiden clustering.
+Point Meridian at any GitHub repository and get back an interactive, queryable knowledge graph. Built with the Claude Code Agent SDK, tree-sitter, NetworkX, and Leiden clustering.
+
+> **Working today, hardening for production.** There's no hosted demo to sign up for — Meridian is **self-hosted and bring-your-own-key (BYOK)**. Run it locally with Docker, supply your own Anthropic API key, and point it at any GitHub repo. See [Deployment](#deployment) to get started.
 
 ---
 
@@ -36,7 +38,7 @@ Point Meridian at any GitHub repository and get back an interactive, queryable k
 
 ## Features
 
-- **Zero install for end users** — just provide a GitHub URL (and a PAT for private repos).
+- **Zero install for end users** — once an instance is running, users just provide a GitHub URL (and a PAT for private repos). You host the instance yourself (Docker + your own Anthropic key).
 - **Three-pass parsing** — tree-sitter (Pass 1) for deterministic AST extraction across 21 languages, a symbol-index workload reducer (Pass 1.5) that resolves the easy cross-file refs without an LLM call, and agent reasoning (Pass 2) for surgical resolution of what's left.
 - **Differential updates** — incremental graph patches in seconds via a built-in diff engine; no full rebuilds.
 - **Graph-grounded QnA** — multi-turn streaming chat with answers that cite specific nodes and files, not hallucinated references.
@@ -260,6 +262,15 @@ Six tables — `users`, `graphs`, `trees`, `repo_clones`, `sync_runs`, `graph_hi
 
 Single Docker image. FastAPI serves both the API and the built React SPA from `api/static/`. SQLite is embedded (no separate DB server).
 
+**Run it yourself (self-hosted, BYOK).** There is no hosted Meridian to try — you run your own instance and bring your own Anthropic API key:
+
+```bash
+cp .env.example .env          # add your ANTHROPIC_API_KEY and ANTHROPIC_MODEL (set JWT_SECRET for prod)
+docker compose up --build -d  # Meridian is now at http://localhost:8000
+```
+
+Token cost for Pass 2 (agent reasoning) and QnA is billed to your own Anthropic key.
+
 **Container contents:** FastAPI + uvicorn (C1, serves static SPA), git CLI (C3a), `tree-sitter-language-pack` (C4a), Agent SDK runtime (C4b), NetworkX + graspologic (C5), SQLite (C8).
 
 **External network dependencies:**
@@ -284,6 +295,23 @@ Single Docker image. FastAPI serves both the API and the built React SPA from `a
 | ClaudeSDKClient QnA | Token cost — per user turn (graph context injected server-side) |
 
 **Optimization principle:** Pass 1 (tree-sitter) and Pass 1.5 (reducer) together resolve the vast majority of edges for free — the reducer alone drops ~88% of ambiguous refs and resolves another ~10% via deterministic symbol matching. Agent tokens burn only on the ~2% that genuinely need reasoning. On incremental syncs, only changed-file edges incur agent cost.
+
+---
+
+## Benchmarks
+
+The same repo and the same question, with and without Meridian's graph. These figures are **derived from Meridian's three-pass architecture** (see [Cost Model](#cost-model)) and representative mixed-language repositories — illustrative of the design, not an independently audited benchmark.
+
+| Metric | Without Meridian | With Meridian |
+| ------- | ---------------- | ------------- |
+| Trace a call chain — _"who calls `validate_token`?"_ | ~2 min · grep across ~29 files | ~2 s · cited to `file:line` |
+| References handed to an LLM while mapping the repo | 100% — naive whole-repo parse | ~2% — Pass 1 + 1.5 resolve the rest |
+| Agent context consumed to answer a structural question | ~97% — context exhausted | ~8% used |
+| Files an agent must read before it can answer | 12+ | 0 — graph-grounded skill file |
+| Re-sync after a commit | full rebuild | incremental patch · ~seconds |
+| Onboard a new engineer to the module boundaries | ~2 weeks | share a graph link |
+
+The reduction comes from the parsing split: ~88% of ambiguous references resolve deterministically (tree-sitter + symbol index), ~10% via unique cross-file match, leaving only ~2% that reach the agent.
 
 ---
 

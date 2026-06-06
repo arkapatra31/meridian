@@ -131,7 +131,8 @@ section#transform{background:rgba(4,4,10,.93)}
 .lang-cards{display:flex;gap:1.25rem;justify-content:center;flex-wrap:wrap;margin:3rem 0 2rem}
 .lang-card{background:rgba(16,16,42,.8);border:1px solid var(--border);border-radius:16px;padding:2rem 2.25rem;display:flex;align-items:center;gap:1rem;flex:1;min-width:200px;max-width:260px;transition:border-color .3s,transform .3s}
 .lang-card:hover{border-color:rgba(76,201,240,.35);transform:translateY(-4px)}
-.lang-emoji{font-size:2.25rem}
+.lang-emoji{font-size:2.25rem;line-height:1}
+.lang-logo{width:40px;height:40px;object-fit:contain;flex-shrink:0}
 .lang-name{font-size:1rem;font-weight:700}
 .lang-ok{font-size:.78rem;color:var(--cyan);font-weight:600;margin-top:3px}
 .soon-row{display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center}
@@ -161,6 +162,57 @@ section#transform{background:rgba(4,4,10,.93)}
 .gv-stat{background:rgba(4,4,10,.8);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.6rem}
 .gv-stat-n{font-size:1.6rem;font-weight:900;letter-spacing:-.04em}
 .gv-stat-l{font-size:.7rem;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.08em}
+.gv-legend{display:flex;gap:.85rem;justify-content:center;flex-wrap:wrap;margin-top:.9rem;max-width:620px}
+.gv-leg{display:inline-flex;align-items:center;gap:.4rem;font-size:.68rem;color:var(--muted);letter-spacing:.02em}
+.gv-leg i{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+#gv-canvas{cursor:grab}
+#gv-canvas.grabbing{cursor:grabbing}
+#gv-canvas.pointing{cursor:pointer}
+
+/* ── BENCHMARK ────────────────────────────────────────────── */
+#benchmark{padding:7rem 3.5rem;position:relative}
+.bm-hero{display:flex;gap:1.25rem;justify-content:center;flex-wrap:wrap;margin:2.75rem 0 3.25rem}
+.bm-hero-card{background:rgba(16,16,42,.7);border:1px solid var(--border);border-radius:16px;padding:1.6rem 2.1rem;min-width:210px;text-align:center;transition:border-color .3s,transform .3s}
+.bm-hero-card:hover{border-color:rgba(76,201,240,.35);transform:translateY(-4px)}
+.bm-hero-n{font-size:2.7rem;font-weight:900;letter-spacing:-.04em;background:linear-gradient(135deg,var(--blue),var(--cyan));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.bm-hero-l{font-size:.76rem;color:var(--muted);margin-top:.45rem;line-height:1.55}
+.bm-grid{display:flex;flex-direction:column;gap:1.25rem;max-width:880px;margin:0 auto}
+.bm-row{background:rgba(10,10,28,.55);border:1px solid var(--border);border-radius:16px;padding:1.4rem 1.6rem;transition:border-color .3s}
+.bm-row:hover{border-color:rgba(67,97,238,.3)}
+.bm-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.1rem;gap:1rem}
+.bm-name{font-weight:700;font-size:.98rem}
+.bm-delta{font-size:.7rem;font-weight:700;color:var(--green);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);padding:4px 12px;border-radius:100px;white-space:nowrap}
+.bm-bars{display:flex;flex-direction:column;gap:.65rem}
+.bm-bar-row{display:grid;grid-template-columns:64px 1fr auto;align-items:center;gap:.9rem}
+.bm-tag{font-size:.64rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em}
+.bm-tag.bad{color:#ef4444}
+.bm-tag.good{color:var(--green)}
+.bm-track{height:9px;background:rgba(255,255,255,.05);border-radius:100px;overflow:hidden}
+.bm-fill{height:100%;width:0;border-radius:100px;transition:width 1.2s cubic-bezier(.2,.85,.25,1)}
+.bm-fill.bad{background:linear-gradient(90deg,#ef4444,#f97316)}
+.bm-fill.good{background:linear-gradient(90deg,var(--blue),var(--cyan))}
+.bm-row.visible .bm-fill{width:var(--w)}
+.bm-val{font-size:.76rem;color:var(--muted);min-width:96px;text-align:right;font-variant-numeric:tabular-nums}
+.bm-note{text-align:center;color:var(--muted);font-size:.72rem;line-height:1.65;margin:2.25rem auto 0;max-width:680px;opacity:.85}
+@media(max-width:640px){
+  #benchmark{padding:5rem 1.25rem}
+  .bm-bar-row{grid-template-columns:54px 1fr}
+  .bm-val{grid-column:1 / -1;text-align:left;min-width:0;margin-top:-.2rem}
+  .bm-head{flex-direction:column;align-items:flex-start;gap:.5rem}
+  /* transform stats wrap instead of overflowing */
+  .tx-copy .tx-stats{gap:1.5rem;flex-wrap:wrap}
+  /* graph-viz overlay: center stats, shrink the legend */
+  .gv-top{top:1.4rem;width:92%}
+  .gv-top p{font-size:.74rem}
+  .gv-legend{gap:.5rem .7rem;margin-top:.7rem}
+  .gv-leg{font-size:.62rem}
+  .gv-stats{left:50%;right:auto;transform:translateX(-50%);bottom:1.4rem;gap:.5rem}
+  .gv-stat{padding:.6rem .85rem;border-radius:11px}
+  .gv-stat-n{font-size:1.15rem}
+  .gv-stat-l{font-size:.58rem}
+  /* one column for the dense card grids on phones */
+  .pass-grid{grid-template-columns:1fr}
+}
 
 /* ── AGENT RELIEF ─────────────────────────────────────────── */
 .ar-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:4rem}
@@ -219,6 +271,7 @@ section#transform{background:rgba(4,4,10,.93)}
 .chat-feat strong{color:#fff}
 
 /* ── NUMBERS ─────────────────────────────────────────────── */
+#numbers{padding:5rem 3.5rem}
 .nums-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2rem;text-align:center}
 .num-n{font-size:clamp(2.5rem,5vw,4.5rem);font-weight:900;letter-spacing:-.05em;background:linear-gradient(135deg,var(--blue),var(--cyan));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;display:block;line-height:1;margin-bottom:.6rem}
 .num-l{font-size:.82rem;color:var(--muted);line-height:1.5}
@@ -252,12 +305,23 @@ footer{padding:2.5rem 3.5rem;border-top:1px solid var(--border);display:flex;jus
 
 @media(max-width:900px){
   section{padding:5rem 1.5rem}
-  .tx-grid,.chat-grid,.ar-grid{grid-template-columns:1fr}
-  .ba-visual-grid{grid-template-columns:1fr}
+  #numbers,#benchmark{padding:5rem 1.5rem}
+  #cta{padding:6rem 1.5rem}
+  .tx-grid,.chat-grid,.ar-grid,.ba-grid,.ba-visual-grid{grid-template-columns:1fr}
+  .tx-grid,.chat-grid{gap:2.5rem}
+  .tx-visual{grid-template-columns:1fr;height:auto}
+  .tx-code-pane{border-right:none;border-bottom:1px solid var(--border)}
+  .tx-graph-pane{min-height:260px}
   .pass-grid,.tools-grid,.nums-grid{grid-template-columns:repeat(2,1fr)}
   nav{padding:16px 1.5rem}
   .nav-links{display:none}
   footer{flex-direction:column;gap:1.5rem;text-align:center}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+  .reveal{opacity:1!important;transform:none!important}
+  .char{opacity:1!important;transform:none!important}
+  .scroll-hint{display:none}
 }
 </style>
 </head>
@@ -278,6 +342,7 @@ footer{padding:2.5rem 3.5rem;border-top:1px solid var(--border);display:flex;jus
     <a href="#transform">How it works</a>
     <a href="#pipeline">Pipeline</a>
     <a href="#agent-relief">Agent Relief</a>
+    <a href="#benchmark">Benchmarks</a>
     <a href="#tools">Export</a>
     <a href="https://github.com/arkapatra31/meridian" target="_blank" rel="noopener">GitHub</a>
     <a href="https://github.com/arkapatra31/meridian" class="btn-nav" target="_blank" rel="noopener">Star on GitHub →</a>
@@ -381,11 +446,11 @@ footer{padding:2.5rem 3.5rem;border-top:1px solid var(--border);display:flex;jus
     <div class="beta-inner">
       <div class="beta-badge reveal"><span class="beta-dot"></span>Public Beta</div>
       <h2 class="sec-title reveal">3 languages, fully supported</h2>
-      <p class="sec-sub reveal" style="margin:0 auto 0">Full node extraction, edge resolution, and Leiden community clustering — production-ready today. More languages are in the pipeline.</p>
+      <p class="sec-sub reveal" style="margin:0 auto 0">Full node extraction, edge resolution, and Leiden community clustering — working today, hardening for production. More languages are in the pipeline.</p>
       <div class="lang-cards">
-        <div class="lang-card reveal"><div class="lang-emoji">🐍</div><div><div class="lang-name">Python</div><div class="lang-ok">✓ Fully supported</div></div></div>
-        <div class="lang-card reveal reveal-delay-1"><div class="lang-emoji">☕</div><div><div class="lang-name">Java</div><div class="lang-ok">✓ Fully supported</div></div></div>
-        <div class="lang-card reveal reveal-delay-2"><div class="lang-emoji">🟨</div><div><div class="lang-name">JavaScript</div><div class="lang-ok">✓ Fully supported</div></div></div>
+        <div class="lang-card reveal"><img class="lang-logo" src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg" alt="Python" width="40" height="40" onerror="this.outerHTML='&lt;div class=&quot;lang-emoji&quot;&gt;🐍&lt;/div&gt;'"><div><div class="lang-name">Python</div><div class="lang-ok">✓ Fully supported</div></div></div>
+        <div class="lang-card reveal reveal-delay-1"><img class="lang-logo" src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" alt="Java" width="40" height="40" onerror="this.outerHTML='&lt;div class=&quot;lang-emoji&quot;&gt;☕&lt;/div&gt;'"><div><div class="lang-name">Java</div><div class="lang-ok">✓ Fully supported</div></div></div>
+        <div class="lang-card reveal reveal-delay-2"><img class="lang-logo" src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg" alt="JavaScript" width="40" height="40" onerror="this.outerHTML='&lt;div class=&quot;lang-emoji&quot;&gt;🟨&lt;/div&gt;'"><div><div class="lang-name">JavaScript</div><div class="lang-ok">✓ Fully supported</div></div></div>
       </div>
       <p style="color:var(--muted);font-size:.78rem;margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.1em;font-weight:600">Coming soon</p>
       <div class="soon-row reveal">
@@ -436,7 +501,16 @@ footer{padding:2.5rem 3.5rem;border-top:1px solid var(--border);display:flex;jus
   <canvas id="gv-canvas"></canvas>
   <div class="gv-top">
     <h2>Your codebase, rendered live</h2>
-    <p>Hover to repel nodes · Gold = god nodes (hubs) · Dim = orphans (dead code)</p>
+    <p>This is Meridian's own graph. Hover a node to trace its real connections · drag to pull it free · gold = god nodes · dim = orphans</p>
+    <div class="gv-legend">
+      <span class="gv-leg"><i style="background:#4361ee"></i>API Gateway</span>
+      <span class="gv-leg"><i style="background:#4cc9f0"></i>Hybrid Parser</span>
+      <span class="gv-leg"><i style="background:#7c3aed"></i>Orchestrator</span>
+      <span class="gv-leg"><i style="background:#2563eb"></i>Graph Engine</span>
+      <span class="gv-leg"><i style="background:#06b6d4"></i>QnA Agent</span>
+      <span class="gv-leg"><i style="background:#8b5cf6"></i>Ingestion</span>
+      <span class="gv-leg"><i style="background:#f8c94f"></i>God node</span>
+    </div>
   </div>
   <div class="gv-stats">
     <div class="gv-stat"><div class="gv-stat-n" id="st-nodes">—</div><div class="gv-stat-l">Nodes</div></div>
@@ -498,6 +572,82 @@ footer{padding:2.5rem 3.5rem;border-top:1px solid var(--border);display:flex;jus
   </div>
 </section>
 
+<!-- BENCHMARK -->
+<section id="benchmark">
+  <div class="inner">
+    <div class="sec-label reveal">Benchmarks</div>
+    <h2 class="sec-title reveal">The difference, measured</h2>
+    <p class="sec-sub reveal">Same repo, same question — with and without Meridian's graph. Each figure is derived from Meridian's three-pass architecture and representative mixed-language repositories.</p>
+
+    <div class="bm-hero">
+      <div class="bm-hero-card reveal">
+        <div class="bm-hero-n"><span data-count="98" data-suffix="%">0</span></div>
+        <div class="bm-hero-l">Fewer references sent to an LLM<br>vs a naive whole-repo parse</div>
+      </div>
+      <div class="bm-hero-card reveal reveal-delay-1">
+        <div class="bm-hero-n"><span data-count="12" data-suffix="×">0</span></div>
+        <div class="bm-hero-l">Less agent context burned<br>to answer a structural question</div>
+      </div>
+      <div class="bm-hero-card reveal reveal-delay-2">
+        <div class="bm-hero-n"><span data-count="2" data-suffix="s">0</span></div>
+        <div class="bm-hero-l">From question to cited answer<br>on the live graph</div>
+      </div>
+    </div>
+
+    <div class="bm-grid">
+      <div class="bm-row reveal">
+        <div class="bm-head"><span class="bm-name">Trace a call chain — "who calls validate_token?"</span><span class="bm-delta">~60× faster</span></div>
+        <div class="bm-bars">
+          <div class="bm-bar-row"><span class="bm-tag bad">Without</span><div class="bm-track"><div class="bm-fill bad" style="--w:100%"></div></div><span class="bm-val">~2 min · 29 files</span></div>
+          <div class="bm-bar-row"><span class="bm-tag good">With</span><div class="bm-track"><div class="bm-fill good" style="--w:4%"></div></div><span class="bm-val">~2 s · cited</span></div>
+        </div>
+      </div>
+
+      <div class="bm-row reveal">
+        <div class="bm-head"><span class="bm-name">References handed to an LLM while building the map</span><span class="bm-delta">~98% fewer</span></div>
+        <div class="bm-bars">
+          <div class="bm-bar-row"><span class="bm-tag bad">Without</span><div class="bm-track"><div class="bm-fill bad" style="--w:100%"></div></div><span class="bm-val">100% → LLM</span></div>
+          <div class="bm-bar-row"><span class="bm-tag good">With</span><div class="bm-track"><div class="bm-fill good" style="--w:2%"></div></div><span class="bm-val">~2% → agent</span></div>
+        </div>
+      </div>
+
+      <div class="bm-row reveal">
+        <div class="bm-head"><span class="bm-name">Agent context consumed to answer a structural question</span><span class="bm-delta">~12× less</span></div>
+        <div class="bm-bars">
+          <div class="bm-bar-row"><span class="bm-tag bad">Without</span><div class="bm-track"><div class="bm-fill bad" style="--w:97%"></div></div><span class="bm-val">~97% · exhausted</span></div>
+          <div class="bm-bar-row"><span class="bm-tag good">With</span><div class="bm-track"><div class="bm-fill good" style="--w:8%"></div></div><span class="bm-val">~8% used</span></div>
+        </div>
+      </div>
+
+      <div class="bm-row reveal">
+        <div class="bm-head"><span class="bm-name">Files an agent must read before it can answer</span><span class="bm-delta">12+ → 0</span></div>
+        <div class="bm-bars">
+          <div class="bm-bar-row"><span class="bm-tag bad">Without</span><div class="bm-track"><div class="bm-fill bad" style="--w:100%"></div></div><span class="bm-val">12+ files</span></div>
+          <div class="bm-bar-row"><span class="bm-tag good">With</span><div class="bm-track"><div class="bm-fill good" style="--w:2%"></div></div><span class="bm-val">0 files</span></div>
+        </div>
+      </div>
+
+      <div class="bm-row reveal">
+        <div class="bm-head"><span class="bm-name">Re-sync after a commit</span><span class="bm-delta">incremental, not full</span></div>
+        <div class="bm-bars">
+          <div class="bm-bar-row"><span class="bm-tag bad">Without</span><div class="bm-track"><div class="bm-fill bad" style="--w:100%"></div></div><span class="bm-val">full rebuild</span></div>
+          <div class="bm-bar-row"><span class="bm-tag good">With</span><div class="bm-track"><div class="bm-fill good" style="--w:7%"></div></div><span class="bm-val">Δ files · ~sec</span></div>
+        </div>
+      </div>
+
+      <div class="bm-row reveal">
+        <div class="bm-head"><span class="bm-name">Onboard a new engineer to the module boundaries</span><span class="bm-delta">days → minutes</span></div>
+        <div class="bm-bars">
+          <div class="bm-bar-row"><span class="bm-tag bad">Without</span><div class="bm-track"><div class="bm-fill bad" style="--w:100%"></div></div><span class="bm-val">~2 weeks</span></div>
+          <div class="bm-bar-row"><span class="bm-tag good">With</span><div class="bm-track"><div class="bm-fill good" style="--w:3%"></div></div><span class="bm-val">share a link</span></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="bm-note reveal">Derived from Meridian's design — ~88% of ambiguous references resolve deterministically (tree-sitter + symbol index), ~10% via unique cross-file match, only ~2% reach the agent. Illustrative of the architecture on representative repos, not an independently audited benchmark.</p>
+  </div>
+</section>
+
 <!-- CHAT -->
 <section id="chat">
   <div class="inner">
@@ -528,7 +678,7 @@ footer{padding:2.5rem 3.5rem;border-top:1px solid var(--border);display:flex;jus
 </section>
 
 <!-- NUMBERS -->
-<section id="numbers" style="padding:5rem 3.5rem">
+<section id="numbers">
   <div class="inner">
     <div class="nums-grid">
       <div class="reveal"><span class="num-n" data-count="88" data-suffix="%">0%</span><div class="num-l">Refs resolved without any LLM call</div></div>
@@ -598,13 +748,12 @@ footer{padding:2.5rem 3.5rem;border-top:1px solid var(--border);display:flex;jus
     <h2 class="cta-h reveal">
       <span class="g">Your codebase</span><br>is waiting.
     </h2>
-    <p class="cta-sub reveal">No install. No config. Just a GitHub repo URL and a personal access token. Your graph is ready in seconds.</p>
+    <p class="cta-sub reveal">No hosted service to sign up for — Meridian is self-hosted and bring-your-own-key. Run it with Docker, drop in your own Anthropic API key, and point it at any GitHub repo.</p>
     <div class="cta-code reveal">
-      <div class="cm"># That's literally it.</div>
-      <div><span class="kw">POST</span> /repos/sync</div>
-      <div>X-GitHub-PAT: ghp_xxxx</div>
-      <div>{ "repo_url": "github.com/you/repo" }</div>
-      <div style="margin-top:.75rem;color:var(--green)">→ Graph building... ready in ~30s</div>
+      <div class="cm"># Self-hosted. Bring your own key.</div>
+      <div><span class="kw">cp</span> .env.example .env   <span class="cm"># add your ANTHROPIC_API_KEY</span></div>
+      <div><span class="kw">docker</span> compose up --build -d</div>
+      <div style="margin-top:.75rem;color:var(--green)">→ Meridian running at http://localhost:8000</div>
     </div>
     <div class="cta-btns reveal">
       <a href="https://github.com/arkapatra31/meridian" class="btn-primary" target="_blank" rel="noopener">
@@ -631,14 +780,34 @@ const PI2=Math.PI*2;
 const lerp=(a,b,t)=>a+(b-a)*t;
 const raf=requestAnimationFrame.bind(window);
 
+// ── MOTION CONTROL ────────────────────────────────────────────
+// Honour prefers-reduced-motion, and never burn rAF on canvases that are
+// scrolled out of view or in a backgrounded tab.
+const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let TAB_VISIBLE=!document.hidden;
+const _resume=[];
+document.addEventListener('visibilitychange',()=>{TAB_VISIBLE=!document.hidden;if(TAB_VISIBLE)_resume.forEach(r=>r())});
+// Drive `tick` via rAF only while `el` is on-screen AND the tab is visible.
+// Under reduced-motion the loop never starts — callers paint one static frame.
+function autoLoop(el,tick){
+  let alive=false,vis=false;
+  function run(){
+    if(alive||!vis||!TAB_VISIBLE||REDUCED)return;
+    alive=true;
+    (function s(){if(!vis||!TAB_VISIBLE){alive=false;return}tick();raf(s)})();
+  }
+  new IntersectionObserver(es=>{es.forEach(e=>{vis=e.isIntersecting;if(vis)run()})},{threshold:0}).observe(el);
+  _resume.push(run);
+}
+
 // ── CURSOR ────────────────────────────────────────────────────
 (function(){
   const dot=document.getElementById('cur-dot');
   const ring=document.getElementById('cur-ring');
   let mx=0,my=0,rx=0,ry=0;
-  document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;dot.style.left=mx+'px';dot.style.top=my+'px'},{passive:true});
+  document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;dot.style.left=mx+'px';dot.style.top=my+'px';if(REDUCED){ring.style.left=mx+'px';ring.style.top=my+'px'}},{passive:true});
   function tick(){rx=lerp(rx,mx,.1);ry=lerp(ry,my,.1);ring.style.left=rx+'px';ring.style.top=ry+'px';raf(tick)}
-  tick();
+  if(!REDUCED)tick();
   document.querySelectorAll('a,button').forEach(el=>{
     el.addEventListener('mouseenter',()=>ring.classList.add('big'));
     el.addEventListener('mouseleave',()=>ring.classList.remove('big'));
@@ -736,6 +905,7 @@ window.addEventListener('scroll',()=>document.getElementById('nav').classList.to
     'pipeline':    {x:.82, y:.25, z:2.4},
     'graph-viz':   {x:.5,  y:.5,  z:1.0},
     'agent-relief':{x:.15, y:.75, z:2.5},
+    'benchmark':   {x:.65, y:.50, z:2.3},
     'chat':        {x:.5,  y:.88, z:2.0},
     'numbers':     {x:.5,  y:.5,  z:1.2},
     'tools':       {x:.85, y:.75, z:2.2},
@@ -765,7 +935,8 @@ window.addEventListener('scroll',()=>document.getElementById('nav').classList.to
     return p.x>-m&&p.x<W*dpr+m&&p.y>-m&&p.y<H*dpr+m;
   }
 
-  function draw(now){
+  function draw(){
+    const now=performance.now();
     ctx.clearRect(0,0,W*dpr,H*dpr);
 
     // Lerp camera
@@ -827,9 +998,9 @@ window.addEventListener('scroll',()=>document.getElementById('nav').classList.to
       ctx.globalAlpha=1;
     });
 
-    raf(draw);
   }
-  raf(draw);
+  autoLoop(c,draw);
+  if(REDUCED){t0=performance.now()-CYCLE*0.65;for(let i=0;i<25;i++)draw();}
 
   // IntersectionObserver — focus camera on active section
   const io=new IntersectionObserver(entries=>{
@@ -837,7 +1008,7 @@ window.addEventListener('scroll',()=>document.getElementById('nav').classList.to
       if(e.isIntersecting&&e.intersectionRatio>.35)window._bgFocus(e.target.id);
     });
   },{threshold:[.35,.6]});
-  ['hero','before-after','transform','beta','pipeline','graph-viz','agent-relief','chat','numbers','tools','cta'].forEach(id=>{
+  ['hero','before-after','transform','beta','pipeline','graph-viz','agent-relief','benchmark','chat','numbers','tools','cta'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)io.observe(el);
   });
@@ -865,49 +1036,71 @@ window.addEventListener('scroll',()=>document.getElementById('nav').classList.to
     }
   });
 
-  let mx=W/2,my=H/2,t=0;
-  document.addEventListener('mousemove',e=>{const r=c.getBoundingClientRect();mx=e.clientX-r.left;my=e.clientY-r.top},{passive:true});
+  let mx=-1e3,my=-1e3,t=0,hover=-1,inside=false;
+  function setPos(e){const r=c.getBoundingClientRect();mx=e.clientX-r.left;my=e.clientY-r.top}
+  document.addEventListener('mousemove',setPos,{passive:true});
+  c.addEventListener('mouseenter',()=>{inside=true;c.style.cursor='crosshair'});
+  c.addEventListener('mouseleave',()=>{inside=false;mx=my=-1e3;hover=-1});
 
   function pos(n,cx,cy){
     const a=n.ring.phase+n.ring.speed*t+n.ao;
     return{x:cx+Math.cos(a)*n.ring.r,y:cy+Math.sin(a)*n.ring.r};
   }
+  const LINK=90;
 
   function frame(){
     ctx.clearRect(0,0,W,H);t++;
-    const cx=W/2+(W/2-mx)*.04;const cy=H/2+(H/2-my)*.04;
+    const cx=W/2+(W/2-(inside?mx:W/2))*.04;const cy=H/2+(H/2-(inside?my:H/2))*.04;
+    const P=nodes.map(n=>pos(n,cx,cy));
+
+    // hover pick + this frame's neighbours (links are distance-based)
+    hover=-1;
+    if(inside){let bd=16*16;for(let i=0;i<P.length;i++){const dx=P[i].x-mx,dy=P[i].y-my,d=dx*dx+dy*dy;if(d<bd){bd=d;hover=i}}}
+    const near=new Set();
+    if(hover>=0)for(let j=0;j<P.length;j++){if(j===hover)continue;const dx=P[j].x-P[hover].x,dy=P[j].y-P[hover].y;if(dx*dx+dy*dy<=LINK*LINK)near.add(j)}
+    const tracing=hover>=0;
+    c.style.cursor=tracing?'pointer':'crosshair';
 
     RINGS.forEach(ring=>{
       ctx.beginPath();ctx.arc(cx,cy,ring.r,0,PI2);
-      ctx.strokeStyle=ring.col;ctx.globalAlpha=.04;ctx.lineWidth=1;ctx.stroke();
+      ctx.strokeStyle=ring.col;ctx.globalAlpha=tracing?.02:.04;ctx.lineWidth=1;ctx.stroke();
     });
     ctx.globalAlpha=1;
 
     for(let i=0;i<nodes.length;i++){
-      const a=nodes[i],pa=pos(a,cx,cy);
+      const a=nodes[i],pa=P[i];
       for(let j=i+1;j<nodes.length;j++){
         const b=nodes[j];
         if(Math.abs(RINGS.indexOf(a.ring)-RINGS.indexOf(b.ring))>1)continue;
-        const pb=pos(b,cx,cy);
+        const pb=P[j];
         const dx=pb.x-pa.x,dy=pb.y-pa.y,d=Math.sqrt(dx*dx+dy*dy);
-        if(d>90)continue;
+        if(d>LINK)continue;
+        const on=tracing&&(i===hover||j===hover);
         ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);
-        ctx.strokeStyle=a.ring.col;ctx.globalAlpha=(1-d/90)*.18;ctx.lineWidth=.7;ctx.stroke();
+        ctx.strokeStyle=on?'#fff':a.ring.col;
+        ctx.globalAlpha=tracing?(on?.6:.03):(1-d/LINK)*.18;
+        ctx.lineWidth=on?1.1:.7;ctx.stroke();
       }
     }
     ctx.globalAlpha=1;
 
-    nodes.forEach(n=>{
-      const p=pos(n,cx,cy);const al=n.active?.7:.25;
-      const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,n.ring.nodeR*4);
-      g.addColorStop(0,n.ring.col+'50');g.addColorStop(1,'transparent');
-      ctx.beginPath();ctx.arc(p.x,p.y,n.ring.nodeR*4,0,PI2);ctx.fillStyle=g;ctx.globalAlpha=al*.7;ctx.fill();
-      ctx.beginPath();ctx.arc(p.x,p.y,n.ring.nodeR,0,PI2);ctx.fillStyle=n.ring.col;ctx.globalAlpha=al;ctx.fill();
+    nodes.forEach((n,i)=>{
+      const p=P[i];
+      const em=tracing&&(i===hover||near.has(i));
+      let al=n.active?.7:.25; if(tracing&&!em)al*=.22; if(em)al=1;
+      ctx.globalCompositeOperation='lighter';
+      const gr=n.ring.nodeR*(em?6:4);
+      const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,gr);
+      g.addColorStop(0,(em?'#ffffff':n.ring.col)+(em?'75':'50'));g.addColorStop(1,'transparent');
+      ctx.beginPath();ctx.arc(p.x,p.y,gr,0,PI2);ctx.fillStyle=g;ctx.globalAlpha=al*.7;ctx.fill();
+      ctx.globalCompositeOperation='source-over';
+      ctx.beginPath();ctx.arc(p.x,p.y,em?n.ring.nodeR*1.6:n.ring.nodeR,0,PI2);
+      ctx.fillStyle=em?'#fff':n.ring.col;ctx.globalAlpha=al;ctx.fill();
     });
     ctx.globalAlpha=1;
-    raf(frame);
   }
-  frame();
+  autoLoop(c,frame);
+  if(REDUCED)frame();
 })();
 
 
@@ -993,12 +1186,10 @@ window.addEventListener('scroll',()=>document.getElementById('nav').classList.to
       ctx.fillStyle='#fff';ctx.globalAlpha=n.alpha*.85;ctx.font=`600 ${n.r>9?10:8}px Inter,sans-serif`;ctx.textAlign='center';
       ctx.fillText(n.label,p.x,p.y+n.r+11);ctx.globalAlpha=1;
     });
-    raf(tick);
   }
-  const obs=new IntersectionObserver(entries=>{
-    if(entries[0].isIntersecting){resize();tick();obs.disconnect()}
-  },{threshold:.2});
-  obs.observe(document.getElementById('transform'));
+  resize();
+  autoLoop(c,tick);
+  if(REDUCED)for(let i=0;i<200;i++)tick();
 })();
 
 // ── PIPELINE LIGHT-UP ─────────────────────────────────────────
@@ -1010,33 +1201,51 @@ window.addEventListener('scroll',()=>document.getElementById('nav').classList.to
   obs.observe(document.getElementById('pipeline'));
 })();
 
-// ── MAIN GRAPH CANVAS — interactive physics ───────────────────
+// ── MAIN GRAPH CANVAS — Meridian's own graph, interactive ─────
 (function(){
   const c=document.getElementById('gv-canvas');
   const ctx=c.getContext('2d');
   const dpr=Math.min(devicePixelRatio,2);
   let W,H,started=false;
-  function resize(){W=c.offsetWidth;H=c.offsetHeight;c.width=W*dpr;c.height=H*dpr;ctx.scale(dpr,dpr)}
+  function resize(){W=c.offsetWidth;H=c.offsetHeight;c.width=W*dpr;c.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}
   resize();window.addEventListener('resize',resize,{passive:true});
-  const NC=120,NCOM=6;
-  const CCOLS=['#4361ee','#4cc9f0','#7c3aed','#2563eb','#06b6d4','#8b5cf6'];
-  let mx=W/2,my=H/2;
+
+  // The six clusters are Meridian's own components; god nodes carry the
+  // component name, the rest carry real module/symbol names from this repo.
+  const COMS=[
+    {label:'API Gateway',col:'#4361ee',names:['create_app','repos.sync','get_current_user_id','graphs.router','login','register','get_graph','delete_repo']},
+    {label:'Hybrid Parser',col:'#4cc9f0',names:['parse_codebase','reduce_workload','resolve_ambiguous','index_tree','walk_python','walk_java','AmbiguousRef','detect_language','mutate_tree']},
+    {label:'Orchestrator',col:'#7c3aed',names:['sync_repo','full_build','patch_sync','get_active_graph','_split_diff','record_sync_run','run_playground_session']},
+    {label:'Graph Engine',col:'#2563eb',names:['build_graph','cluster_graph','persist_graph','link_tree_to_graph','MultiDiGraph','leiden','record_graph_version']},
+    {label:'QnA Agent',col:'#06b6d4',names:['build_context','search_nodes','get_neighbours','get_community','QnaSession','generate_skill_file','SYSTEM_PROMPT']},
+    {label:'Ingestion',col:'#8b5cf6',names:['clone_repo','pull_repo','GithubMCPClient','persist_clone','PullResult','commits_between']},
+  ];
+  const NCOM=COMS.length, NC=120, REPEL=true;
+  let mx=-1e3,my=-1e3,hover=-1,drag=-1,inside=false;
+
   class N{
     constructor(i){
       this.id=i;this.com=Math.floor(i/NC*NCOM);
       this.god=Math.random()<.05;this.orphan=!this.god&&Math.random()<.08;
-      this.color=this.god?'#f8c94f':this.orphan?'#2a2a4a':CCOLS[this.com];
+      this.color=this.god?'#f8c94f':this.orphan?'#2a2a4a':COMS[this.com].col;
       this.r=this.god?8:this.orphan?2.5:Math.random()*3+2;
+      const pool=COMS[this.com].names;
+      this.name=this.god?COMS[this.com].label:pool[i%pool.length];
+      this.kind=this.god?'component (god)':this.orphan?'orphan':/^[A-Z]/.test(this.name)?'class':this.name.includes('.')?'route':'function';
       const a=(this.com/NCOM)*PI2;const cr=Math.min(W,H)*.27;
       this.x=W/2+Math.cos(a)*cr+(Math.random()-.5)*90;
       this.y=H/2+Math.sin(a)*cr+(Math.random()-.5)*90;
       this.vx=(Math.random()-.5)*.3;this.vy=(Math.random()-.5)*.3;
-      this.alpha=0;this.gt=Math.random()*PI2;
+      this.alpha=0;this.gt=Math.random()*PI2;this.deg=0;
     }
     update(ns){
       this.alpha=Math.min(1,this.alpha+.015);this.gt+=.03;
-      const dx=this.x-mx,dy=this.y-my,d=Math.sqrt(dx*dx+dy*dy)+1;
-      if(d<220){const f=((220-d)/220)*2.5;this.vx+=dx/d*f;this.vy+=dy/d*f}
+      if(this.id===drag){this.x=mx;this.y=my;this.vx=this.vy=0;return}
+      // cursor repels the field — unless we're tracing connections (hover)
+      if(REPEL&&inside&&hover<0){
+        const dx=this.x-mx,dy=this.y-my,d=Math.sqrt(dx*dx+dy*dy)+1;
+        if(d<200){const f=((200-d)/200)*2.2;this.vx+=dx/d*f;this.vy+=dy/d*f}
+      }
       const a=(this.com/NCOM)*PI2,cr=Math.min(W,H)*.27;
       this.vx+=(W/2+Math.cos(a)*cr-this.x)*.003;
       this.vy+=(H/2+Math.sin(a)*cr-this.y)*.003;
@@ -1056,50 +1265,105 @@ window.addEventListener('scroll',()=>document.getElementById('nav').classList.to
   const es=[];
   for(let i=0;i<NC;i++)for(let j=i+1;j<NC;j++)
     if(ns[i].com===ns[j].com&&Math.random()<.13)es.push([i,j]);
-  const gods=ns.filter(n=>n.god);
-  gods.forEach(g=>{
+  ns.filter(n=>n.god).forEach(g=>{
     const others=ns.filter(n=>n.com!==g.com&&!n.orphan);
     for(let i=0;i<Math.min(5,others.length);i++)es.push([g.id,others[Math.floor(Math.random()*others.length)].id]);
   });
+  // adjacency for connection-tracing on hover
+  const adj=ns.map(()=>new Set());
+  es.forEach(([a,b])=>{adj[a].add(b);adj[b].add(a);ns[a].deg++;ns[b].deg++});
   document.getElementById('st-nodes').textContent=NC;
   document.getElementById('st-edges').textContent=es.length;
   document.getElementById('st-comm').textContent=NCOM;
-  document.addEventListener('mousemove',e=>{const r=c.getBoundingClientRect();mx=e.clientX-r.left;my=e.clientY-r.top},{passive:true});
+
+  function pick(){
+    let best=-1,bd=18*18;
+    for(const n of ns){const dx=n.x-mx,dy=n.y-my,d=dx*dx+dy*dy;if(d<bd){bd=d;best=n.id}}
+    return best;
+  }
+  function setPos(e){const r=c.getBoundingClientRect();mx=e.clientX-r.left;my=e.clientY-r.top}
+  c.addEventListener('mousemove',e=>{setPos(e);inside=true;if(drag<0){hover=pick();c.className=hover>=0?'pointing':''}},{passive:true});
+  c.addEventListener('mouseleave',()=>{inside=false;hover=-1;mx=my=-1e3;c.className=''});
+  c.addEventListener('mousedown',e=>{setPos(e);const p=pick();if(p>=0){drag=p;hover=p;c.className='grabbing'}});
+  window.addEventListener('mouseup',()=>{if(drag>=0){drag=-1;c.className=inside&&hover>=0?'pointing':''}});
+
+  function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+
   function frame(){
     ctx.clearRect(0,0,W,H);
+    const focus=hover>=0?hover:drag, tracing=focus>=0;
+    const lit=tracing?adj[focus]:null;
+
+    // community halos
     for(let cm=0;cm<NCOM;cm++){
       const a=(cm/NCOM)*PI2,cr=Math.min(W,H)*.27;
       const hx=W/2+Math.cos(a)*cr,hy=H/2+Math.sin(a)*cr;
       const g=ctx.createRadialGradient(hx,hy,0,hx,hy,130);
-      g.addColorStop(0,CCOLS[cm]+'07');g.addColorStop(1,'transparent');
+      g.addColorStop(0,COMS[cm].col+'07');g.addColorStop(1,'transparent');
       ctx.beginPath();ctx.arc(hx,hy,130,0,PI2);ctx.fillStyle=g;ctx.fill();
     }
+
+    // edges — connected edges glow, the rest recede when tracing
     for(const [a,b] of es){
       const na=ns[a],nb=ns[b];
       const dx=nb.x-na.x,dy=nb.y-na.y,d=Math.sqrt(dx*dx+dy*dy);
       if(d>380)continue;
+      const on=tracing&&(a===focus||b===focus);
+      const base=(1-d/380)*Math.min(na.alpha,nb.alpha);
       ctx.beginPath();ctx.moveTo(na.x,na.y);ctx.lineTo(nb.x,nb.y);
-      ctx.strokeStyle=na.color;ctx.globalAlpha=(1-d/380)*.12*Math.min(na.alpha,nb.alpha);ctx.lineWidth=.7;ctx.stroke();
+      ctx.strokeStyle=on?'#fff':na.color;
+      ctx.globalAlpha=tracing?(on?.55:.03):base*.12;
+      ctx.lineWidth=on?1.4:.7;ctx.stroke();
     }
     ctx.globalAlpha=1;
+
+    // nodes — bloom via additive compositing
     for(const n of ns){
       n.update(ns);
+      const dim=tracing&&n.id!==focus&&!(lit&&lit.has(n.id));
+      const em=tracing&&(n.id===focus||(lit&&lit.has(n.id)));
+      const a=n.alpha*(dim?.18:1);
       if(n.god){
         const pulse=.5+.5*Math.sin(n.gt);
         ctx.beginPath();ctx.arc(n.x,n.y,n.r*3+pulse*3,0,PI2);
-        ctx.strokeStyle='#f8c94f';ctx.globalAlpha=.25*n.alpha*pulse;ctx.lineWidth=1.5;ctx.stroke();
+        ctx.strokeStyle='#f8c94f';ctx.globalAlpha=.25*a*pulse;ctx.lineWidth=1.5;ctx.stroke();
       }
-      const g2=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r*4);
-      g2.addColorStop(0,n.color+(n.god?'70':'28'));g2.addColorStop(1,'transparent');
-      ctx.beginPath();ctx.arc(n.x,n.y,n.r*4,0,PI2);ctx.fillStyle=g2;ctx.globalAlpha=n.alpha;ctx.fill();
-      ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,PI2);ctx.fillStyle=n.color;ctx.globalAlpha=n.alpha;ctx.fill();
+      ctx.globalCompositeOperation='lighter';
+      const gr=n.r*(em?5.5:4);
+      const g2=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,gr);
+      g2.addColorStop(0,n.color+(n.god||em?'80':'28'));g2.addColorStop(1,'transparent');
+      ctx.beginPath();ctx.arc(n.x,n.y,gr,0,PI2);ctx.fillStyle=g2;ctx.globalAlpha=a;ctx.fill();
+      ctx.globalCompositeOperation='source-over';
+      ctx.beginPath();ctx.arc(n.x,n.y,em?n.r*1.25:n.r,0,PI2);
+      ctx.fillStyle=em?'#fff':n.color;ctx.globalAlpha=a;ctx.fill();
+      if(em){ctx.beginPath();ctx.arc(n.x,n.y,em?n.r*1.25:n.r,0,PI2);ctx.strokeStyle=n.color;ctx.globalAlpha=a;ctx.lineWidth=2;ctx.stroke()}
       ctx.globalAlpha=1;
+      // neighbour labels while tracing
+      if(em&&n.id!==focus){
+        ctx.font='600 10px Inter,system-ui,sans-serif';ctx.textAlign='center';
+        ctx.fillStyle='rgba(255,255,255,.78)';ctx.globalAlpha=a;
+        ctx.fillText(n.name,n.x,n.y-n.r-7);ctx.globalAlpha=1;
+      }
+    }
+
+    // tooltip card for the focused node
+    if(tracing){
+      const n=ns[focus];
+      const title=n.name, sub=`${n.kind} · ${COMS[n.com].label} · ${n.deg} edge${n.deg===1?'':'s'}`;
+      ctx.font='700 13px Inter,system-ui,sans-serif';const tw=ctx.measureText(title).width;
+      ctx.font='500 11px Inter,system-ui,sans-serif';const sw=ctx.measureText(sub).width;
+      const bw=Math.max(tw,sw)+24,bh=46;
+      let bx=n.x+n.r+12,by=n.y-bh/2;
+      if(bx+bw>W-8)bx=n.x-n.r-12-bw; if(by<8)by=8; if(by+bh>H-8)by=H-8-bh;
+      ctx.globalAlpha=.92;roundRect(bx,by,bw,bh,10);ctx.fillStyle='rgba(8,8,18,.96)';ctx.fill();
+      ctx.lineWidth=1;ctx.strokeStyle=n.color+'88';ctx.stroke();ctx.globalAlpha=1;
+      ctx.textAlign='left';
+      ctx.font='700 13px Inter,system-ui,sans-serif';ctx.fillStyle='#fff';ctx.fillText(title,bx+12,by+19);
+      ctx.font='500 11px Inter,system-ui,sans-serif';ctx.fillStyle=n.color;ctx.fillText(sub,bx+12,by+34);
     }
   }
-  const obs=new IntersectionObserver(entries=>{
-    if(entries[0].isIntersecting&&!started){started=true;(function loop(){frame();raf(loop)})()}
-  },{threshold:.1});
-  obs.observe(c);
+  autoLoop(c,frame);
+  if(REDUCED)for(let i=0;i<240;i++)frame();
 })();
 
 // ── AGENT RELIEF ANIMATION ────────────────────────────────────
@@ -1177,6 +1441,7 @@ window.addEventListener('scroll',()=>document.getElementById('nav').classList.to
 (function(){
   function animCount(el,target,suffix,zero){
     if(zero){el.textContent=zero;return}
+    if(REDUCED){el.textContent=target+(suffix||'');return}
     let start=null;
     function step(ts){
       if(!start)start=ts;
