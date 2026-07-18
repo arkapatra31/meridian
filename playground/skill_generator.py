@@ -2,10 +2,10 @@
 
 Supported tools
 ---------------
-claude_code  → .claude/commands/<slug>.md      (slash command, frontmatter)
-cursor       → .cursor/rules/<slug>-context.mdc (MDC frontmatter + markdown)
-copilot      → .github/copilot-instructions.md  (plain markdown, always-on)
-windsurf     → .windsurfrules                   (plain markdown, always-on)
+claude_code  → .claude/skills/<slug>/SKILL.md        (skill directory, frontmatter)
+cursor       → .cursor/rules/<slug>-context.mdc       (MDC frontmatter + markdown)
+copilot      → .github/copilot-instructions.md        (plain markdown, always-on)
+windsurf     → .windsurf/rules/meridian-<slug>.md     (trigger frontmatter, always-on)
 """
 
 from __future__ import annotations
@@ -25,6 +25,20 @@ SUPPORTED_TOOLS: frozenset[str] = frozenset(
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
+
+
+def build_graph_anchor(graph_data: dict[str, Any]) -> str:
+    """Return a compact hub-nodes + cluster map for the QnA system prompt.
+
+    This is the static portion of graph context — injected once at session
+    start and cached across all turns, so it is never re-written to the
+    prompt cache on subsequent turns.
+    """
+    nodes: list[dict] = graph_data.get("nodes", [])
+    edges: list[dict] = graph_data.get("edges", [])
+    stats = _extract_stats(nodes, edges)
+    ctx: dict[str, Any] = dict(nodes=nodes, edges=edges, **stats)
+    return "\n".join(_build_claude_code_lines(ctx))
 
 
 def generate_skill_file(
@@ -64,16 +78,24 @@ def generate_skill_file(
     return _generate_claude_code(ctx)
 
 
+def skill_slug(repo_url: str) -> str:
+    """Return the kebab-case skill directory name for a Claude Code skill."""
+    safe = re.sub(r"[^a-zA-Z0-9._-]", "-", _repo_slug(repo_url))
+    return f"meridian-{safe}"
+
+
 def skill_filename(repo_url: str, tool: str = TOOL_CLAUDE_CODE) -> str:
-    """Return the suggested filename for the generated file."""
+    """Return the suggested download filename for the generated file."""
     slug = _repo_slug(repo_url)
     safe = re.sub(r"[^a-zA-Z0-9._-]", "-", slug)
+    if tool == TOOL_CLAUDE_CODE:
+        return "SKILL.md"
     if tool == TOOL_CURSOR:
         return f"{safe}-context.mdc"
     if tool == TOOL_COPILOT:
         return "copilot-instructions.md"
     if tool == TOOL_WINDSURF:
-        return ".windsurfrules"
+        return f"meridian-{safe}.md"
     return f"meridian-{safe}.md"
 
 
@@ -81,12 +103,14 @@ def skill_placement_path(repo_url: str, tool: str = TOOL_CLAUDE_CODE) -> str:
     """Return the path (relative to repo root) where the file should be placed."""
     fname = skill_filename(repo_url, tool)
     if tool == TOOL_CLAUDE_CODE:
-        return f".claude/commands/{fname}"
+        return f".claude/skills/{skill_slug(repo_url)}/{fname}"
     if tool == TOOL_CURSOR:
         return f".cursor/rules/{fname}"
     if tool == TOOL_COPILOT:
         return f".github/{fname}"
-    return fname  # windsurf → repo root (.windsurfrules)
+    if tool == TOOL_WINDSURF:
+        return f".windsurf/rules/{fname}"
+    return fname
 
 
 # ── Format generators ──────────────────────────────────────────────────────────
@@ -94,58 +118,29 @@ def skill_placement_path(repo_url: str, tool: str = TOOL_CLAUDE_CODE) -> str:
 
 def _generate_claude_code(ctx: dict) -> str:
     repo_slug = ctx["repo_slug"]
+    nodes       = ctx["nodes"]
+    edges       = ctx["edges"]
+    communities = ctx["communities"]
     lines: list[str] = []
 
     lines += [
         "---",
-        f"description: Navigate {repo_slug} — search nodes, trace call chains, explore clusters",
+        f"description: Structural graph for {repo_slug} — locate nodes, trace call chains, map clusters without reading source files.",
+        f"when_to_use: Before any question about code structure, dependencies, ownership, or call chains in {repo_slug}.",
         "---",
         "",
-        f"# Meridian · {repo_slug}",
-        "",
-        f"You are navigating the **{repo_slug}** codebase using a Meridian knowledge graph.",
-        "Use the context below to answer questions, trace call chains, and identify architectural patterns.",
-        "",
-        "---",
+        f"# {repo_slug} · {ctx['branch']}@{ctx['sha_short']} · {len(nodes):,}n {len(edges):,}e {len(communities)}c",
         "",
     ]
 
-    lines += _build_common_lines(ctx)
+    lines += _build_claude_code_lines(ctx)
 
     lines += [
+        "",
         "---",
-        "",
-        "## How to Use This Context",
-        "",
-        "When answering questions about this codebase:",
-        "",
-        "1. **Start with hub nodes** — highest-connectivity anchors; trace outward from them.",
-        "2. **Follow edge types** — `CALLS` = runtime dependency; `IMPORTS` = module dependency; `CONTAINS` = nesting.",
-        "3. **Respect communities** — nodes in the same cluster are functionally cohesive.",
-        "4. **Orphan nodes** have no connections — candidates for dead code or standalone utilities.",
-        "5. **`INFERRED` edges** were resolved by an agent (less certain than `EXTRACTED` / tree-sitter).",
-        "",
-        "### Node schema",
-        "```",
-        'id:         "<file>::<name>"  — unique node identifier',
-        "type:       module | class | function | method | external",
-        "name:       short identifier",
-        "file:       relative path from repo root",
-        "line_start / line_end: int",
-        "language:   string",
-        "community:  int   — Leiden cluster ID",
-        "is_god:     bool  — hub spanning 2+ communities",
-        "is_orphan:  bool  — no connections (dead code candidate)",
-        "```",
-        "",
-        "### Edge schema",
-        "```",
-        "source / target: node id",
-        "type:       IMPORTS | CALLS | CONTAINS | INHERITS | DECORATES | RELATES_TO | DEPENDS_ON",
-        "confidence: EXTRACTED (tree-sitter) | INFERRED (agent)",
-        "```",
-        "",
-        f"*Graph ID: `{ctx['graph_id']}` · Generated by Meridian*",
+        "Answer from this graph. No source reads for structural questions.",
+        "Cite: `name (file:line)`. Lookup → Hubs first, then Clusters.",
+        f"Graph: `{ctx['graph_id']}`",
     ]
 
     return "\n".join(lines)
@@ -214,6 +209,10 @@ def _generate_windsurf(ctx: dict) -> str:
     lines: list[str] = []
 
     lines += [
+        "---",
+        "trigger: always_on",
+        "---",
+        "",
         f"# Meridian — {repo_slug}",
         "",
         f"Knowledge graph context for the **{repo_slug}** codebase (`{ctx['branch']}` branch, commit `{ctx['sha_short']}`).",
@@ -234,6 +233,68 @@ def _generate_windsurf(ctx: dict) -> str:
 # ── Shared body ────────────────────────────────────────────────────────────────
 
 
+def _build_claude_code_lines(ctx: dict) -> list[str]:
+    """Ultra-compact body: one line per hub, one line per cluster.
+
+    Format is optimised for LLM consumption, not human reading. Every token
+    carries information — no markdown bold, no decorative separators.
+
+    Hub line:   name type Ccluster file:line →callee1,callee2 ←caller1,caller2
+    Cluster:    Cid(count★) hub1,hub2,member3,member4,member5
+    """
+    god_nodes        = ctx["god_nodes"]
+    orphan_count     = ctx["orphan_count"]
+    communities      = ctx["communities"]
+    adj              = ctx["adj"]
+    edge_map         = ctx["edge_map"]
+    reverse_edge_map = ctx["reverse_edge_map"]
+    node_by_id       = ctx["node_by_id"]
+
+    lines: list[str] = []
+
+    # ── Hub nodes — one line each ──────────────────────────────────────────────
+    if god_nodes:
+        lines.append("## Hubs")
+        god_sorted = sorted(god_nodes, key=lambda n: len(adj.get(n.get("id", ""), [])), reverse=True)
+        for n in god_sorted[:20]:
+            nid    = n.get("id", "")
+            name   = n.get("name") or nid
+            ntype  = n.get("type", "node")[:2]  # fn/cl/md/me
+            file_  = n.get("file", "")
+            line_s = n.get("line_start")
+            cid    = n.get("community")
+            loc    = f"{file_}:{line_s}" if line_s else file_
+            cluster = f" C{cid}" if cid is not None else ""
+
+            out_names = [
+                (node_by_id.get(tid, {}).get("name") or tid)
+                for tid, _ in sorted(edge_map.get(nid, []), key=lambda x: _EDGE_PRIORITY.get(x[1], 99))[:5]
+            ]
+            in_names = [
+                (node_by_id.get(sid, {}).get("name") or sid)
+                for sid, _ in sorted(reverse_edge_map.get(nid, []), key=lambda x: _EDGE_PRIORITY.get(x[1], 99))[:5]
+            ]
+
+            out_part = f" →{','.join(out_names)}" if out_names else ""
+            in_part  = f" ←{','.join(in_names)}"  if in_names  else ""
+            lines.append(f"{name} {ntype}{cluster} {loc}{out_part}{in_part}")
+
+    # ── Cluster map — one line each ────────────────────────────────────────────
+    if communities:
+        lines.append("\n## Clusters")
+        for cid, members in sorted(communities.items(), key=lambda x: len(x[1]), reverse=True)[:12]:
+            hub_flag  = "★" if any(n.get("is_god") for n in members) else ""
+            hub_names = [n.get("name") for n in members if n.get("is_god") and n.get("name")]
+            rest      = [n.get("name") for n in members if not n.get("is_god") and n.get("name")]
+            sample    = ",".join((hub_names + rest)[:6])
+            lines.append(f"C{cid}({len(members)}{hub_flag}) {sample}")
+
+    if orphan_count:
+        lines.append(f"\n{orphan_count} orphan nodes omitted.")
+
+    return lines
+
+
 def _build_common_lines(ctx: dict) -> list[str]:
     nodes             = ctx["nodes"]
     edges             = ctx["edges"]
@@ -244,6 +305,9 @@ def _build_common_lines(ctx: dict) -> list[str]:
     type_counter      = ctx["type_counter"]
     edge_type_counter = ctx["edge_type_counter"]
     adj               = ctx["adj"]
+    edge_map          = ctx["edge_map"]
+    reverse_edge_map  = ctx["reverse_edge_map"]
+    node_by_id        = ctx["node_by_id"]
     repo_url          = ctx["repo_url"]
     branch            = ctx["branch"]
     sha_short         = ctx["sha_short"]
@@ -280,10 +344,11 @@ def _build_common_lines(ctx: dict) -> list[str]:
 
     if god_nodes:
         lines += [
-            "## Hub Nodes (Architectural Anchors)",
+            "## Hub Nodes",
             "",
-            "These nodes span multiple communities and are the highest-leverage entry points.",
-            "Start here when tracing unfamiliar call chains or imports.",
+            "Architectural anchors (★) that span multiple communities.",
+            "Each entry lists outbound (→) and inbound (←) edges so you can trace call chains",
+            "through the graph without opening source files.",
             "",
         ]
         god_sorted = sorted(god_nodes, key=lambda n: len(adj.get(n.get("id", ""), [])), reverse=True)
@@ -293,12 +358,39 @@ def _build_common_lines(ctx: dict) -> list[str]:
             ntype  = n.get("type", "node")
             file_  = n.get("file", "")
             line_s = n.get("line_start")
+            line_e = n.get("line_end")
             cid    = n.get("community")
             degree = len(adj.get(nid, []))
-            loc    = f"{file_}:{line_s}" if line_s else file_
+            loc    = (
+                f"{file_}:{line_s}-{line_e}" if (line_s and line_e) else
+                f"{file_}:{line_s}" if line_s else file_
+            )
             cid_tag = f" · cluster {cid}" if cid is not None else ""
-            lines.append(f"- **`{name}`** (`{ntype}`) — `{loc}` · {degree} connections{cid_tag}")
-        lines.append("")
+            lines += [f"### ★ `{name}` (`{ntype}`) — `{loc}`{cid_tag} · {degree} connections", ""]
+
+            outbound = sorted(edge_map.get(nid, []), key=lambda x: _EDGE_PRIORITY.get(x[1], 99))[:8]
+            if outbound:
+                lines.append("**→ Calls / depends on:**")
+                for tid, etype in outbound:
+                    tnode = node_by_id.get(tid)
+                    tname = tnode.get("name", tid) if tnode else tid
+                    tfile = tnode.get("file", "") if tnode else ""
+                    tline = tnode.get("line_start") if tnode else None
+                    tloc  = f"{tfile}:{tline}" if tfile and tline else tfile or tid
+                    lines.append(f"  - `{etype}` → `{tname}` — `{tloc}`")
+
+            inbound = sorted(reverse_edge_map.get(nid, []), key=lambda x: _EDGE_PRIORITY.get(x[1], 99))[:8]
+            if inbound:
+                lines.append("**← Called by / depended on by:**")
+                for sid, etype in inbound:
+                    snode = node_by_id.get(sid)
+                    sname = snode.get("name", sid) if snode else sid
+                    sfile = snode.get("file", "") if snode else ""
+                    sline = snode.get("line_start") if snode else None
+                    sloc  = f"{sfile}:{sline}" if sfile and sline else sfile or sid
+                    lines.append(f"  - `{etype}` ← `{sname}` — `{sloc}`")
+
+            lines.append("")
 
     if communities:
         lines += [
@@ -317,16 +409,20 @@ def _build_common_lines(ctx: dict) -> list[str]:
                 members,
                 key=lambda n: (not n.get("is_god"), -len(adj.get(n.get("id", ""), []))),
             )
-            for n in sorted_members[:10]:
+            for n in sorted_members[:20]:
                 name   = n.get("name") or n.get("id", "")
                 ntype  = n.get("type", "node")
                 file_  = n.get("file", "")
                 line_s = n.get("line_start")
+                line_e = n.get("line_end")
                 hub_tag = " ★" if n.get("is_god") else ""
-                loc = f"{file_}:{line_s}" if line_s else file_
+                loc = (
+                    f"{file_}:{line_s}-{line_e}" if (line_s and line_e) else
+                    f"{file_}:{line_s}" if line_s else file_
+                )
                 lines.append(f"  - `{name}` (`{ntype}`){hub_tag} — `{loc}`")
-            if len(members) > 10:
-                lines.append(f"  - *…and {len(members) - 10} more*")
+            if len(members) > 20:
+                lines.append(f"  - *…and {len(members) - 20} more*")
             lines.append("")
 
     if edge_type_counter:
@@ -339,6 +435,12 @@ def _build_common_lines(ctx: dict) -> list[str]:
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
+
+_EDGE_PRIORITY: dict[str, int] = {
+    "CALLS": 0, "IMPORTS": 1, "INHERITS": 2,
+    "DECORATES": 3, "CONTAINS": 4, "RELATES_TO": 5, "DEPENDS_ON": 6,
+}
 
 
 def _extract_stats(nodes: list[dict], edges: list[dict]) -> dict:
@@ -358,11 +460,18 @@ def _extract_stats(nodes: list[dict], edges: list[dict]) -> dict:
             communities[int(cid)].append(n)
 
     adj: dict[str, list[str]] = defaultdict(list)
+    edge_map: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    reverse_edge_map: dict[str, list[tuple[str, str]]] = defaultdict(list)
     for e in edges:
         s, t = e.get("source"), e.get("target")
+        etype = e.get("type", "?")
         if s and t:
             adj[s].append(t)
             adj[t].append(s)
+            edge_map[s].append((t, etype))
+            reverse_edge_map[t].append((s, etype))
+
+    node_by_id: dict[str, dict] = {n["id"]: n for n in nodes if n.get("id")}
 
     return dict(
         god_nodes=god_nodes,
@@ -372,6 +481,9 @@ def _extract_stats(nodes: list[dict], edges: list[dict]) -> dict:
         type_counter=Counter(n.get("type", "unknown") for n in nodes),
         edge_type_counter=Counter(e.get("type", "unknown") for e in edges),
         adj=dict(adj),
+        edge_map=dict(edge_map),
+        reverse_edge_map=dict(reverse_edge_map),
+        node_by_id=node_by_id,
     )
 
 

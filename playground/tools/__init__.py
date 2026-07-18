@@ -5,10 +5,13 @@ Each tool module exposes a `run(...)` function with focused logic:
   - get_neighbours — full neighbour list for a known node ID
   - get_community  — all members of a Leiden community cluster
 
-`build_context(query, graph_data)` composes the three tools into a single
-readable text block that the session injects as context per user turn.
-The output is formatted prose/bullets (not raw JSON) so the model gets
-signal, not noise.
+Two context builders:
+  - build_query_refs(query, graph_data) — lightweight per-turn snippet
+    injected alongside each user message (< 500 tokens). The static
+    structural anchor lives in the system prompt (see build_graph_anchor
+    in skill_generator.py) and is cached once per session.
+  - build_context(query, graph_data)    — legacy full-expansion builder
+    kept for backward compatibility.
 """
 
 from __future__ import annotations
@@ -16,6 +19,75 @@ from __future__ import annotations
 from typing import Any
 
 from . import get_community, get_neighbours, search_nodes
+
+
+def build_query_refs(
+    query: str,
+    graph_data: dict[str, Any],
+    *,
+    top_k: int = 6,
+) -> str:
+    """Per-turn retrieval: matched nodes + their direct edges (names only).
+
+    Static structural anchor (hub nodes, clusters) already lives in the
+    system prompt. This adds query-specific nodes — including non-hub nodes
+    the anchor omits — with their outbound/inbound edges so the model can
+    answer "what does X call?" without reading source files.
+
+    Target: < 600 tokens per turn.
+    """
+    seeds = search_nodes.run(query, graph_data, top_k=top_k)
+
+    if not seeds:
+        god_nodes = [n for n in graph_data.get("nodes", []) if n.get("is_god")][:top_k]
+        seeds = [
+            {
+                "id": n.get("id"),
+                "name": n.get("name"),
+                "type": n.get("type"),
+                "file": n.get("file"),
+                "line_start": n.get("line_start"),
+                "community": n.get("community"),
+                "is_god": True,
+                "is_orphan": False,
+                "neighbours": [],
+            }
+            for n in god_nodes
+        ]
+
+    lines: list[str] = []
+    for seed in seeds:
+        nid   = seed.get("id", "")
+        name  = seed.get("name") or nid
+        ntype = seed.get("type", "node")
+        file_ = seed.get("file", "")
+        line  = seed.get("line_start")
+        cid   = seed.get("community")
+        hub   = "★" if seed.get("is_god") else ""
+        loc   = f"{file_}:{line}" if file_ and line else file_
+        cid_tag = f" C{cid}" if cid is not None else ""
+
+        # header line: name type file:line cluster hub
+        lines.append(f"{name} ({ntype}) {loc}{cid_tag}{hub}")
+
+        # neighbours — expand via get_neighbours for non-hub nodes that may
+        # not appear in the system-prompt anchor
+        nb = get_neighbours.run(nid, graph_data, max_neighbours=8)
+        if nb.get("found"):
+            out = nb.get("outbound", [])
+            inn = nb.get("inbound",  [])
+            if out:
+                out_names = ",".join(
+                    (n.get("name") or n.get("id", ""))[:40] for n in out[:5]
+                )
+                lines.append(f"  →{out_names}")
+            if inn:
+                in_names = ",".join(
+                    (n.get("name") or n.get("id", ""))[:40] for n in inn[:5]
+                )
+                lines.append(f"  ←{in_names}")
+
+    return "\n".join(lines)
 
 
 def build_context(

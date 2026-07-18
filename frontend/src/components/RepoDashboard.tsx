@@ -495,21 +495,27 @@ const SKILL_TOOLS = [
 
 type SkillToolId = typeof SKILL_TOOLS[number]['id']
 
+function skillSlugFor(repoUrl: string): string {
+  const base = repoUrl.replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '')
+  return 'meridian-' + base.replace(/[^a-zA-Z0-9._-]/g, '-')
+}
+
 function skillFilenameFor(repoUrl: string, tool: SkillToolId): string {
-  const slug = repoUrl.replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '')
-  const safe = slug.replace(/[^a-zA-Z0-9._-]/g, '-')
-  if (tool === 'cursor')  return `${safe}-context.mdc`
-  if (tool === 'copilot') return 'copilot-instructions.md'
-  if (tool === 'windsurf') return '.windsurfrules'
+  if (tool === 'claude_code') return 'SKILL.md'
+  const safe = repoUrl.replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/[^a-zA-Z0-9._-]/g, '-')
+  if (tool === 'cursor')   return `${safe}-context.mdc`
+  if (tool === 'copilot')  return 'copilot-instructions.md'
+  if (tool === 'windsurf') return `meridian-${safe}.md`
   return `meridian-${safe}.md`
 }
 
 function skillPlacementFor(repoUrl: string, tool: SkillToolId): string {
   const fname = skillFilenameFor(repoUrl, tool)
-  if (tool === 'claude_code') return `.claude/commands/${fname}`
+  if (tool === 'claude_code') return `.claude/skills/${skillSlugFor(repoUrl)}/${fname}`
   if (tool === 'cursor')      return `.cursor/rules/${fname}`
   if (tool === 'copilot')     return `.github/${fname}`
-  return fname  // windsurf → repo root
+  if (tool === 'windsurf')    return `.windsurf/rules/${fname}`
+  return fname
 }
 
 function SkillInstructionModal({
@@ -526,15 +532,31 @@ function SkillInstructionModal({
   const [selectedTool, setSelectedTool] = useState<SkillToolId>('claude_code')
 
   const placementPath = skillPlacementFor(graph.repo_url, selectedTool)
-  const filename      = skillFilenameFor(graph.repo_url, selectedTool)
-  const slashCommand  = selectedTool === 'claude_code'
-    ? `/${filename.replace(/\.md$/, '')}`
-    : null
+  const slashCommand  = `/${skillSlugFor(graph.repo_url)}`
 
-  const step2: { label: string; code?: string; prose?: string } = (() => {
+  const skillDir = placementPath.replace('/SKILL.md', '')
+
+  const step1: { description: string; mkdirCmd?: string } = (() => {
+    if (selectedTool === 'claude_code') return {
+      description: 'Create the skill directory first, then place the downloaded SKILL.md inside it:',
+      mkdirCmd: `mkdir -p ${skillDir}`,
+    }
+    if (selectedTool === 'cursor') return {
+      description: 'Create .cursor/rules/ if it doesn\'t exist, then place the file at:',
+    }
+    if (selectedTool === 'copilot') return {
+      description: 'Create .github/ if it doesn\'t exist, then place the file at:',
+    }
+    return {
+      description: 'Create .windsurf/rules/ if it doesn\'t exist, then place the file at:',
+    }
+  })()
+
+  const step2: { label: string; code?: string; description?: string; prose?: string } = (() => {
     if (selectedTool === 'claude_code') return {
       label: 'Invoke in Claude Code',
-      code: slashCommand!,
+      description: 'Type this slash command in any Claude Code session inside the repo:',
+      code: slashCommand,
     }
     if (selectedTool === 'cursor') return {
       label: 'How it activates',
@@ -546,7 +568,7 @@ function SkillInstructionModal({
     }
     return {
       label: 'How it activates',
-      prose: 'Windsurf reads .windsurfrules from the repo root and injects it into every session automatically.',
+      prose: 'Windsurf reads all files in .windsurf/rules/ and injects them into every Cascade session automatically (trigger: always_on).',
     }
   })()
 
@@ -608,7 +630,12 @@ function SkillInstructionModal({
               </div>
               <div className="pb-4 flex flex-col gap-1.5">
                 <p className="text-xs font-semibold text-gray-300">Place in your repository</p>
-                <p className="text-xs text-gray-500">Drop the downloaded file into your repo at:</p>
+                <p className="text-xs text-gray-500">{step1.description}</p>
+                {step1.mkdirCmd && (
+                  <code className="text-xs bg-white/5 border border-white/8 rounded-lg px-3 py-2 text-emerald-300 font-mono break-all">
+                    {step1.mkdirCmd}
+                  </code>
+                )}
                 <code className="text-xs bg-white/5 border border-white/8 rounded-lg px-3 py-2 text-indigo-300 font-mono break-all">
                   {placementPath}
                 </code>
@@ -627,8 +654,8 @@ function SkillInstructionModal({
                 <p className="text-xs font-semibold text-gray-300">{step2.label}</p>
                 {step2.code != null ? (
                   <>
-                    <p className="text-xs text-gray-500">Type this slash command in any Claude Code session inside the repo:</p>
-                    <code className="text-xs bg-white/5 border border-white/8 rounded-lg px-3 py-2 text-emerald-300 font-mono">
+                    <p className="text-xs text-gray-500">{step2.description}</p>
+                    <code className="text-xs bg-white/5 border border-white/8 rounded-lg px-3 py-2 text-emerald-300 font-mono break-all">
                       {step2.code}
                     </code>
                   </>

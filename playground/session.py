@@ -31,7 +31,7 @@ from sdk.claude_client import ClaudeClient
 
 from .config import QnaConfig
 from .prompts import SYSTEM_PROMPT
-from .tools import build_context
+from .tools import build_query_refs
 
 logger = logging.getLogger("meridian.playground")
 
@@ -67,9 +67,13 @@ class QnaSession:
         self.last_result: ResultMessage | None = None
 
     async def __aenter__(self) -> "QnaSession":
+        from .skill_generator import build_graph_anchor
+        anchor = build_graph_anchor(self.graph_data)
         self._wrapper = ClaudeClient.get_instance(
             system_prompt=SYSTEM_PROMPT.format(
-                repo_url=self.repo_url, branch=self.branch
+                repo_url=self.repo_url,
+                branch=self.branch,
+                graph_anchor=anchor,
             ),
             max_turns=self.config.max_turns,
             name=self.session_id,
@@ -87,10 +91,15 @@ class QnaSession:
                 self._client = None
 
     def _build_prompt(self, query: str) -> str:
-        """Run the retrieval pipeline and wrap the result for the model."""
-        ctx = build_context(query, self.graph_data, top_k=self.config.top_k)
+        """Retrieve query-relevant node refs for this turn only.
+
+        The large structural anchor (hub nodes + clusters) is already in the
+        system prompt and cached — this only injects a small per-query snippet
+        so the cache prefix stays stable across turns.
+        """
+        refs = build_query_refs(query, self.graph_data, top_k=self.config.top_k)
         return (
-            f"<graph_context>\n{ctx}\n</graph_context>\n\n"
+            f"<graph_refs>\n{refs}\n</graph_refs>\n\n"
             f"Question: {query}"
         )
 
