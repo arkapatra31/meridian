@@ -516,6 +516,8 @@ class _JavaWalker:
 
         params_n = n.child_by_field_name("parameters")
         params = self._params(params_n) if params_n is not None else []
+        type_n = n.child_by_field_name("type")
+        return_type = self._text(type_n).replace("\n", " ").strip() if type_n else None
 
         self.nodes.append(
             Node(
@@ -527,6 +529,7 @@ class _JavaWalker:
                 line_end=n.end_point[0] + 1,
                 language="java",
                 params=params,
+                return_type=return_type,
             )
         )
         self.edges.append(Edge(parent, mid, "CONTAINS"))
@@ -610,9 +613,12 @@ class _JavaWalker:
         out: list[str] = []
         for p in params_n.named_children:
             if p.type == "formal_parameter":
+                type_n = p.child_by_field_name("type")
                 name_n = p.child_by_field_name("name")
                 if name_n:
-                    out.append(self._text(name_n))
+                    name = self._text(name_n)
+                    type_str = self._text(type_n).replace("\n", " ").strip() if type_n else None
+                    out.append(f"{name}: {type_str}" if type_str else name)
             elif p.type == "spread_parameter":
                 name_n = p.child_by_field_name("name")
                 if name_n:

@@ -495,9 +495,8 @@ const SKILL_TOOLS = [
 
 type SkillToolId = typeof SKILL_TOOLS[number]['id']
 
-function skillSlugFor(repoUrl: string): string {
-  const base = repoUrl.replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '')
-  return 'meridian-' + base.replace(/[^a-zA-Z0-9._-]/g, '-')
+function skillSlugFor(_repoUrl: string): string {
+  return 'meridian'
 }
 
 function skillFilenameFor(repoUrl: string, tool: SkillToolId): string {

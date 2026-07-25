@@ -270,6 +270,8 @@ class _JsWalker:
         fid = f"{self.module_id}::{name}"
         params_n = n.child_by_field_name("parameters") or n.child_by_field_name("parameter")
         params = self._params(params_n) if params_n else []
+        ret_node = n.child_by_field_name("return_type")
+        return_type = self._text(ret_node).lstrip(":").strip() if ret_node else None
 
         self.nodes.append(
             Node(
@@ -281,6 +283,8 @@ class _JsWalker:
                 line_end=n.end_point[0] + 1,
                 language=self.lang,
                 params=params,
+                docstring=self._jsdoc_first_line(n),
+                return_type=return_type,
             )
         )
         self.edges.append(Edge(self.module_id, fid, "CONTAINS"))
@@ -303,6 +307,8 @@ class _JsWalker:
             fid = f"{self.module_id}::{name}"
             params_n = val_n.child_by_field_name("parameters") or val_n.child_by_field_name("parameter")
             params = self._params(params_n) if params_n else []
+            ret_node = val_n.child_by_field_name("return_type")
+            return_type = self._text(ret_node).lstrip(":").strip() if ret_node else None
 
             self.nodes.append(
                 Node(
@@ -314,6 +320,8 @@ class _JsWalker:
                     line_end=val_n.end_point[0] + 1,
                     language=self.lang,
                     params=params,
+                    docstring=self._jsdoc_first_line(n),
+                    return_type=return_type,
                 )
             )
             self.edges.append(Edge(self.module_id, fid, "CONTAINS"))
@@ -329,6 +337,8 @@ class _JsWalker:
         mid = f"{parent}.{name}"
         params_n = n.child_by_field_name("parameters")
         params = self._params(params_n) if params_n else []
+        ret_node = n.child_by_field_name("return_type")
+        return_type = self._text(ret_node).lstrip(":").strip() if ret_node else None
 
         self.nodes.append(
             Node(
@@ -340,6 +350,8 @@ class _JsWalker:
                 line_end=n.end_point[0] + 1,
                 language=self.lang,
                 params=params,
+                docstring=self._jsdoc_first_line(n),
+                return_type=return_type,
             )
         )
         self.edges.append(Edge(parent, mid, "CONTAINS"))
@@ -449,10 +461,22 @@ class _JsWalker:
             elif t == "object_pattern":
                 out.append(self._text(p))
             elif t in ("required_parameter", "optional_parameter"):
-                pn = p.child_by_field_name("pattern") or (p.named_children[0] if p.named_children else None)
-                if pn:
-                    out.append(self._text(pn).split(":")[0].strip())
+                out.append(self._text(p))
         return out
+
+    def _jsdoc_first_line(self, n) -> str | None:
+        """Return the first meaningful line of a JSDoc comment preceding node n."""
+        prev = n.prev_sibling
+        if prev is None or prev.type != "comment":
+            return None
+        text = self._text(prev)
+        if "/**" not in text:
+            return None
+        for raw_line in text.splitlines()[1:]:
+            line = raw_line.strip().lstrip("*").strip()
+            if line and not line.startswith("@") and line not in ("/", "*/"):
+                return line[:120]
+        return None
 
     def _find_all(self, n, types: set[str]) -> list:
         results = []

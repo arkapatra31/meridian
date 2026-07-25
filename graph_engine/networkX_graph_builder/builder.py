@@ -75,6 +75,7 @@ def _build(loaded: LoadedTree) -> GraphBuildResult:
             language=n.get("language"),
             params=n.get("params", []),
             docstring=n.get("docstring"),
+            return_type=n.get("return_type"),
         )
 
     edges_added = 0
@@ -103,6 +104,7 @@ def _build(loaded: LoadedTree) -> GraphBuildResult:
                     language=None,
                     params=[],
                     docstring=None,
+                    return_type=None,
                 )
                 external_nodes.add(endpoint)
 
