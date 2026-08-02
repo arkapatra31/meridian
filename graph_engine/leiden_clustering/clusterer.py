@@ -18,7 +18,7 @@ from dataclasses import dataclass
 
 import networkx as nx
 
-from graph_engine.utils.db_utils import load_graph, update_graph_with_clusters
+from graph_engine.utils.db_utils import load_graph, update_graph_with_clusters  # load_graph kept for backward compat
 
 logger = logging.getLogger("meridian.graph_engine.leiden")
 
@@ -38,17 +38,28 @@ class ClusterResult:
 def cluster_graph(
     graph_id: str,
     *,
+    graph: nx.MultiDiGraph | None = None,
+    node_count: int | None = None,
+    edge_count: int | None = None,
+    last_commit_sha: str | None = None,
+    repo_clone_id: str | None = None,
     resolution: float = _DEFAULT_RESOLUTION,
     random_seed: int | None = None,
 ) -> ClusterResult:
     """Run Leiden on the graph at `graph_id` and persist the partition.
 
-    Single entry point invoked by the orchestrator after C5a lands the
-    unclustered row. Returns the in-memory `MultiDiGraph` with `community`,
-    `is_god`, and `is_orphan` set on each node.
+    Pass `graph` to skip the DB reload — the orchestrator already has the
+    `MultiDiGraph` in memory from C5a and can hand it straight through.
+    When `graph` is None the row is loaded from DB (backward-compatible path).
+    `node_count`, `edge_count`, `last_commit_sha`, `repo_clone_id` are
+    forwarded to `update_graph_with_clusters` so the final persist writes
+    everything in one shot (H4 — no intermediate persist_graph round-trip).
     """
-    loaded = load_graph(graph_id)
-    g = loaded.graph
+    if graph is None:
+        loaded = load_graph(graph_id)
+        g = loaded.graph
+    else:
+        g = graph
 
     partition = _run_leiden(g, resolution=resolution, random_seed=random_seed)
     nx.set_node_attributes(g, partition, "community")
@@ -62,6 +73,10 @@ def cluster_graph(
         graph_id,
         graph=g,
         community_count=community_count,
+        node_count=node_count,
+        edge_count=edge_count,
+        last_commit_sha=last_commit_sha,
+        repo_clone_id=repo_clone_id,
     )
 
     logger.info(

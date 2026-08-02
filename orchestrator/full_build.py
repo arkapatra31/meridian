@@ -18,8 +18,8 @@ from graph_engine.leiden_clustering import cluster_graph
 from graph_engine.networkX_graph_builder import build_graph
 from graph_engine.utils.db_utils import (
     link_tree_to_graph,
-    persist_graph,
     record_graph_version,
+    reserve_graph,
 )
 from hybrid_parsing.codebase_parser import parse_codebase
 from hybrid_parsing.codebase_parser.models import ParseResult
@@ -56,21 +56,28 @@ async def full_build(
         last_commit_sha=clone_result.last_commit_sha,
     )
 
+    # Reserve (or re-confirm) the graph_id for this build. The route already
+    # called reserve_graph before dispatching; this UPSERT is idempotent and
+    # returns the same graph_id so downstream steps have it without threading
+    # it through the call stack.
+    graph_id = await asyncio.to_thread(
+        reserve_graph, repo_url, branch_name, user_id or ""
+    )
+
     tree = await _parse_and_resolve(clone_result.repo)
     tree_id = await asyncio.to_thread(
         index_tree, tree, last_commit_sha=clone_result.last_commit_sha
     )
     graph_result = await asyncio.to_thread(build_graph, tree_id)
-    graph_id = await asyncio.to_thread(
-        persist_graph,
-        graph_result.graph,
-        repo_url=repo_url,
-        branch=branch_name,
-        repo_clone_id=clone_result.repo_id,
+    cluster_result = await asyncio.to_thread(
+        cluster_graph,
+        graph_id,
+        graph=graph_result.graph,
+        node_count=graph_result.node_count,
+        edge_count=graph_result.edge_count,
         last_commit_sha=graph_result.last_commit_sha,
-        user_id=user_id,
+        repo_clone_id=clone_result.repo_id,
     )
-    cluster_result = await asyncio.to_thread(cluster_graph, graph_id)
 
     # C5b just flipped the graphs row to READY. Link this build's tree onto
     # the (now final) graph_id, evicting any stale tree from a prior build,

@@ -30,9 +30,10 @@ class ActiveGraph:
     previous_sha: str | None
 
 
-def has_active_graph(repo_url: str, branch: str) -> bool:
-    """True if a READY graph with non-empty graph_data exists for repo_url+branch."""
+def has_active_graph(repo_url: str, branch: str, user_id: str) -> bool:
+    """True if a READY graph with non-empty graph_data exists for (user_id, repo_url, branch)."""
     stmt = select(Graph.graph_id).where(
+        Graph.user_id == user_id,
         Graph.repo_url == repo_url,
         Graph.branch == branch,
         Graph.status == GraphStatus.READY.value,
@@ -42,12 +43,12 @@ def has_active_graph(repo_url: str, branch: str) -> bool:
         return session.execute(stmt).first() is not None
 
 
-def get_active_graph(repo_url: str, branch: str) -> ActiveGraph | None:
+def get_active_graph(repo_url: str, branch: str, user_id: str) -> ActiveGraph | None:
     """Fetch the IDs + last_commit_sha needed to drive a PATCH.
 
-    Returns the active READY graph for `(repo_url, branch)` along with its
-    linked tree id and the SHA we last anchored on. Used by `patch_sync` to
-    avoid re-loading the row downstream and to compute the pull diff.
+    Returns the active READY graph for `(user_id, repo_url, branch)` along
+    with its linked tree id and the SHA we last anchored on. Scoped to
+    user_id so two users syncing the same URL never share a graph row.
     """
     stmt = (
         select(
@@ -58,6 +59,7 @@ def get_active_graph(repo_url: str, branch: str) -> ActiveGraph | None:
         )
         .outerjoin(Tree, Tree.graph_id == Graph.graph_id)
         .where(
+            Graph.user_id == user_id,
             Graph.repo_url == repo_url,
             Graph.branch == branch,
             Graph.status == GraphStatus.READY.value,

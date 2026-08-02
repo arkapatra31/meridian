@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="en" data-theme="">
+<head>
+<meta charset="utf-8">
+<title>Meridian — Developer Productivity Impact</title>
+<style>
+/* ── Tokens ──────────────────────────────────────────────────────────────── */
+:root {
+  --bg:          #F2F5F9;
+  --surface:     #FFFFFF;
+  --surface-2:   #EBF0F7;
+  --border:      #D8E0EC;
+  --text:        #0C1928;
+  --muted:       #586878;
+  --accent:      #1B5EE8;
+  --accent-dim:  #E8EFFD;
+  --win:         #0B6840;
+  --win-bg:      #E3F5EC;
+  --base-bar:    #8FA0B4;
+  --merid-bar:   #1B5EE8;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:         #0B1220;
+    --surface:    #111E32;
+    --surface-2:  #172238;
+    --border:     #1E2E48;
+    --text:       #E4EAF4;
+    --muted:      #7A8EA8;
+    --accent:     #4B82FA;
+    --accent-dim: #162040;
+    --win:        #34D079;
+    --win-bg:     #0A2A18;
+    --base-bar:   #5A6E84;
+    --merid-bar:  #4B82FA;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:         #0B1220;
+  --surface:    #111E32;
+  --surface-2:  #172238;
+  --border:     #1E2E48;
+  --text:       #E4EAF4;
+  --muted:      #7A8EA8;
+  --accent:     #4B82FA;
+  --accent-dim: #162040;
+  --win:        #34D079;
+  --win-bg:     #0A2A18;
+  --base-bar:   #5A6E84;
+  --merid-bar:  #4B82FA;
+}
+:root[data-theme="light"] {
+  --bg:          #F2F5F9;
+  --surface:     #FFFFFF;
+  --surface-2:   #EBF0F7;
+  --border:      #D8E0EC;
+  --text:        #0C1928;
+  --muted:       #586878;
+  --accent:      #1B5EE8;
+  --accent-dim:  #E8EFFD;
+  --win:         #0B6840;
+  --win-bg:      #E3F5EC;
+  --base-bar:    #8FA0B4;
+  --merid-bar:   #1B5EE8;
+}
+
+/* ── Reset ───────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Page shell ──────────────────────────────────────────────────────────── */
+.page { max-width: 880px; margin: 0 auto; padding: 0 24px 80px; }
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+header {
+  padding: 44px 0 36px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 52px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+.wordmark {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+header h1 {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-wrap: balance;
+  max-width: 520px;
+  margin-bottom: 8px;
+}
+header p {
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 480px;
+}
+.theme-btn {
+  flex-shrink: 0;
+  margin-top: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: border-color 0.15s, color 0.15s;
+}
+.theme-btn:hover { border-color: var(--accent); color: var(--accent); }
+.theme-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── Section label ───────────────────────────────────────────────────────── */
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+section { margin-bottom: 56px; }
+
+/* ── Hero KPIs ───────────────────────────────────────────────────────────── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 22px 20px 20px;
+}
+.kpi-card.lead {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.kpi-meta {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+.kpi-card.lead .kpi-meta { color: var(--accent); }
+.kpi-num {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.kpi-detail {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.kpi-detail strong { color: var(--text); font-weight: 600; }
+
+/* ── Metric bars ─────────────────────────────────────────────────────────── */
+.metric-list { display: flex; flex-direction: column; gap: 24px; }
+.metric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 9px;
+}
+.metric-name { font-size: 14px; font-weight: 600; }
+.win-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--win-bg);
+  color: var(--win);
+  letter-spacing: 0.02em;
+}
+.bar-pair { display: flex; flex-direction: column; gap: 5px; }
+.bar-row {
+  display: grid;
+  grid-template-columns: 62px 1fr 72px;
+  align-items: center;
+  gap: 10px;
+}
+.bar-tag {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: right;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.bar-track {
+  background: var(--surface-2);
+  border-radius: 3px;
+  height: 18px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 3px;
+}
+.bar-fill.b { background: var(--base-bar); opacity: 0.65; }
+.bar-fill.m { background: var(--merid-bar); }
+.bar-val {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* ── Narrative ───────────────────────────────────────────────────────────── */
+.narrative {
+  border-left: 3px solid var(--accent);
+  padding: 16px 20px;
+  background: var(--surface);
+  border-radius: 0 8px 8px 0;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.75;
+}
+.narrative strong { color: var(--text); font-weight: 600; }
+
+/* ── Calculator ──────────────────────────────────────────────────────────── */
+.calculator {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.calc-top {
+  padding: 24px 24px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.calc-top p {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+.calc-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 32px;
+}
+.calc-field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.slider-row { display: flex; align-items: center; gap: 12px; }
+input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.slider-val {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.calc-bottom {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  divide-x: 1px solid var(--border);
+}
+.calc-result {
+  padding: 22px 20px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+.calc-result:last-child { border-right: none; }
+.result-num {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 6px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.result-label {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* ── Side-by-side detail ─────────────────────────────────────────────────── */
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.compare-col {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.compare-col.m-col { border-color: var(--accent); background: var(--accent-dim); }
+.col-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.m-col .col-head { color: var(--accent); border-color: var(--accent); }
+.col-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.col-row:last-child { border-bottom: none; }
+.row-key { color: var(--muted); }
+.row-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+.m-col .row-val { color: var(--accent); }
+.row-desc {
+  font-size: 12px;
+  text-align: right;
+  color: var(--muted);
+  max-width: 160px;
+  line-height: 1.3;
+}
+.m-col .row-desc { color: var(--accent); }
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+footer {
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 660px) {
+  .kpi-grid { grid-template-columns: 1fr; }
+  .compare-grid { grid-template-columns: 1fr; }
+  .calc-controls { grid-template-columns: 1fr; }
+  .calc-bottom { grid-template-columns: 1fr; }
+  .calc-result { border-right: none; border-bottom: 1px solid var(--border); }
+  .calc-result:last-child { border-bottom: none; }
+  .kpi-num { font-size: 42px; }
+  header { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div>
+      <div class="wordmark">Meridian</div>
+      <h1>Knowledge graphs cut agentic task time by 62%</h1>
+      <p>Benchmark: same task, same model, same codebase — Meridian skill active vs. no context strategy</p>
+    </div>
+    <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle colour theme">Toggle theme</button>
+  </header>
+
+  <!-- ── Hero numbers ── -->
+  <section aria-label="Headline metrics">
+    <div class="section-label">The headline numbers</div>
+    <div class="kpi-grid">
+
+      <div class="kpi-card lead">
+        <div class="kpi-meta">Time to complete</div>
+        <div class="kpi-num">−62%</div>
+        <div class="kpi-detail"><strong>6m 59s → 2m 38s.</strong> Same task, same codebase. The agent reached the answer without exploring the repo.</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-meta">Cost per session</div>
+        <div class="kpi-num">−33%</div>
+        <div class="kpi-detail"><strong>$0.77 → $0.52</strong> per agentic task. Savings compound directly with usage volume.</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-meta">Exploratory lookups</div>
+        <div class="kpi-num">−67%</div>
+        <div class="kpi-detail"><strong>3 tool calls → 1.</strong> Meridian answered structural questions from the graph — no file hunting.</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── Metric bars ── -->
+  <section aria-label="Metric comparison">
+    <div class="section-label">Head-to-head</div>
+    <div class="metric-list">
+
+      <div>
+        <div class="metric-header">
+          <span class="metric-name">Task duration</span>
+          <span class="win-badge">62% faster</span>
+        </div>
+        <div class="bar-pair">
+          <div class="bar-row">
+            <span class="bar-tag">Baseline</span>
+            <div class="bar-track"><div class="bar-fill b" style="width:100%"></div></div>
+            <span class="bar-val">6m 59s</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-tag">Meridian</span>
+            <div class="bar-track"><div class="bar-fill m" style="width:37.6%"></div></div>
+            <span class="bar-val">2m 38s</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="metric-header">
+          <span class="metric-name">API cost per task</span>
+          <span class="win-badge">33% cheaper</span>
+        </div>
+        <div class="bar-pair">
+          <div class="bar-row">
+            <span class="bar-tag">Baseline</span>
+            <div class="bar-track"><div class="bar-fill b" style="width:100%"></div></div>
+            <span class="bar-val">$0.77</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-tag">Meridian</span>
+            <div class="bar-track"><div class="bar-fill m" style="width:67.5%"></div></div>
+            <span class="bar-val">$0.52</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="metric-header">
+          <span class="metric-name">Conversation turns to resolution</span>
+          <span class="win-badge">23% fewer</span>
+        </div>
+        <div class="bar-pair">
+          <div class="bar-row">
+            <span class="bar-tag">Baseline</span>
+            <div class="bar-track"><div class="bar-fill b" style="width:100%"></div></div>
+            <span class="bar-val">13 turns</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-tag">Meridian</span>
+            <div class="bar-track"><div class="bar-fill m" style="width:76.9%"></div></div>
+            <span class="bar-val">10 turns</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="metric-header">
+          <span class="metric-name">Exploratory tool calls</span>
+          <span class="win-badge">67% fewer</span>
+        </div>
+        <div class="bar-pair">
+          <div class="bar-row">
+            <span class="bar-tag">Baseline</span>
+            <div class="bar-track"><div class="bar-fill b" style="width:100%"></div></div>
+            <span class="bar-val">3 calls</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-tag">Meridian</span>
+            <div class="bar-track"><div class="bar-fill m" style="width:33.3%"></div></div>
+            <span class="bar-val">1 call</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── Why ── -->
+  <section aria-label="Explanation">
+    <div class="section-label">Why it's faster</div>
+    <div class="narrative">
+      Without Meridian, the agent must <strong>discover the codebase as it goes</strong> — spawning sub-agents, opening files, and tracing imports to answer structural questions. With Meridian, the knowledge graph is pre-built: hub nodes, call chains, module relationships, and cluster membership are immediately queryable. <strong>The exploration phase disappears.</strong> The agent goes straight from question to answer.
+    </div>
+  </section>
+
+  <!-- ── Calculator ── -->
+  <section aria-label="Team-scale projection">
+    <div class="section-label">At team scale</div>
+    <div class="calculator">
+      <div class="calc-top">
+        <p>Adjust for your team to see projected monthly impact, assuming 22 working days.</p>
+        <div class="calc-controls">
+          <div class="calc-field">
+            <label for="devs">Developers using AI assistants</label>
+            <div class="slider-row">
+              <input type="range" id="devs" min="5" max="500" value="50" step="5" oninput="recalc()">
+              <span class="slider-val" id="devs-val">50</span>
+            </div>
+          </div>
+          <div class="calc-field">
+            <label for="sessions">Agentic sessions per developer / day</label>
+            <div class="slider-row">
+              <input type="range" id="sessions" min="1" max="20" value="3" step="1" oninput="recalc()">
+              <span class="slider-val" id="sessions-val">3</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="calc-bottom">
+        <div class="calc-result">
+          <div class="result-num" id="hours-saved">—</div>
+          <div class="result-label">Engineering hours<br>recovered per month</div>
+        </div>
+        <div class="calc-result">
+          <div class="result-num" id="cost-saved">—</div>
+          <div class="result-label">API spend saved<br>per month</div>
+        </div>
+        <div class="calc-result">
+          <div class="result-num" id="sessions-total">—</div>
+          <div class="result-label">Faster completions<br>per month</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Detail ── -->
+  <section aria-label="Session detail">
+    <div class="section-label">Session detail</div>
+    <div class="compare-grid">
+
+      <div class="compare-col">
+        <div class="col-head">Baseline — no context strategy</div>
+        <div class="col-row"><span class="row-key">Duration</span><span class="row-val">6m 59s</span></div>
+        <div class="col-row"><span class="row-key">Cost</span><span class="row-val">$0.77</span></div>
+        <div class="col-row"><span class="row-key">Turns</span><span class="row-val">13</span></div>
+        <div class="col-row"><span class="row-key">Tool calls</span><span class="row-val">3</span></div>
+        <div class="col-row"><span class="row-key">Approach</span><span class="row-desc">Explored codebase; spawned sub-agents to find answers</span></div>
+      </div>
+
+      <div class="compare-col m-col">
+        <div class="col-head">Meridian — graph-aware</div>
+        <div class="col-row"><span class="row-key">Duration</span><span class="row-val">2m 38s</span></div>
+        <div class="col-row"><span class="row-key">Cost</span><span class="row-val">$0.52</span></div>
+        <div class="col-row"><span class="row-key">Turns</span><span class="row-val">10</span></div>
+        <div class="col-row"><span class="row-key">Tool calls</span><span class="row-val">1</span></div>
+        <div class="col-row"><span class="row-key">Approach</span><span class="row-desc">Graph traversal — answered structural questions directly</span></div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer>
+    Single-task benchmark on the same codebase and model (claude-sonnet-4-6).
+    Costs derived from Anthropic pricing, July 2026.
+    At-scale projections apply the per-session time and cost delta uniformly across sessions and assume 22 working days per month.
+    Results from a single session pair — broader sampling is recommended before drawing statistically firm conclusions.
+  </footer>
+
+</div>
+
+<script>
+  function toggleTheme() {
+    const root = document.documentElement;
+    const isDark = root.getAttribute('data-theme') === 'dark'
+      || (!root.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    root.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  }
+
+  function fmt(n) {
+    if (n >= 1000) return (n / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'k';
+    return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  }
+
+  function recalc() {
+    const devs     = parseInt(document.getElementById('devs').value, 10);
+    const sessions = parseInt(document.getElementById('sessions').value, 10);
+    const DAYS     = 22;
+    const TIME_SAVED_SEC = 419 - 158; // 6m59s - 2m38s
+    const COST_SAVED     = 0.25;      // $0.77 - $0.52
+
+    document.getElementById('devs-val').textContent     = devs;
+    document.getElementById('sessions-val').textContent = sessions;
+
+    const total   = devs * sessions * DAYS;
+    const hours   = (total * TIME_SAVED_SEC) / 3600;
+    const dollars = total * COST_SAVED;
+
+    document.getElementById('hours-saved').textContent   = fmt(Math.round(hours)) + ' hrs';
+    document.getElementById('cost-saved').textContent    = '$' + fmt(Math.round(dollars));
+    document.getElementById('sessions-total').textContent = fmt(total);
+  }
+
+  recalc();
+</script>
+</body>
+</html>
