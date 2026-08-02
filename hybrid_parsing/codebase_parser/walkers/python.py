@@ -260,6 +260,8 @@ class _PythonWalker:
         )
         params_node = n.child_by_field_name("parameters")
         params = self._params(params_node) if params_node is not None else []
+        ret_node = n.child_by_field_name("return_type")
+        return_type = self._text(ret_node).lstrip("->").strip() if ret_node else None
         self.nodes.append(
             Node(
                 id=fid,
@@ -271,6 +273,7 @@ class _PythonWalker:
                 language="python",
                 params=params,
                 docstring=self._docstring_of_block(n),
+                return_type=return_type,
             )
         )
         self.edges.append(Edge(parent, fid, "CONTAINS"))
@@ -573,8 +576,7 @@ class _PythonWalker:
             if t == "identifier":
                 out.append(self._text(p))
             elif t in ("default_parameter", "typed_parameter", "typed_default_parameter"):
-                name_n = p.child_by_field_name("name")
-                out.append(self._text(name_n) if name_n is not None else self._text(p))
+                out.append(self._text(p))
             elif t in ("list_splat_pattern", "dictionary_splat_pattern"):
                 out.append(self._text(p))
             elif t in ("positional_separator", "keyword_separator"):

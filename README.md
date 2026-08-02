@@ -223,7 +223,7 @@ All `/repos` and `/graph` endpoints require `Authorization: Bearer <token>`. The
 | -------- | ------ | ------------- |
 | `POST` | `/auth/register` | Create a user account |
 | `POST` | `/auth/login` | Authenticate; returns 24h JWT |
-| `POST` | `/repos/sync` | Single dispatch — orchestrator picks FULL vs PATCH internally |
+| `POST` | `/repos/sync` | Returns **202** immediately with `graph_id`; FULL or PATCH pipeline runs in background. Poll `GET /graph?graph_id=…` for `status` |
 | `GET` | `/repos` | List authenticated user's graphs (metadata only) |
 | `GET` | `/graph?graph_id=...` | Fetch the full knowledge graph JSON (nodes + edges) |
 | `DELETE` | `/repos/{graph_id}` | Permanently delete a graph (cascades tree, history, clone) |

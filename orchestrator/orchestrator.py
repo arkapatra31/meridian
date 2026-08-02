@@ -39,7 +39,10 @@ async def sync_repo(
     """Decide FULL vs PATCH and run the matching pipeline."""
     branch_name = branch or "main"
 
-    if await asyncio.to_thread(has_active_graph, repo_url, branch_name):
+    if not user_id:
+        raise ValueError("user_id is required — unauthenticated sync is not supported")
+
+    if await asyncio.to_thread(has_active_graph, repo_url, branch_name, user_id):
         logger.info(
             "orchestrator: active graph exists for %s@%s — PATCH mode",
             repo_url,

@@ -47,7 +47,7 @@ The Anthropic SDK wrappers used by C2 / C4b / C6 live in `sdk/` — `sdk/claude_
 **Endpoints:**
 - `POST /auth/register` — create a user account (`api/routes/user_services/router.py`)
 - `POST /auth/login` — returns a 24h JWT
-- `POST /repos/sync` — single dispatch: orchestrator picks FULL or PATCH internally (`api/routes/repos.py`). PAT is passed per-request via the `X-GitHub-PAT` header and never stored
+- `POST /repos/sync` — returns **202 Accepted** immediately with `graph_id` and `mode`; the FULL or PATCH pipeline runs as a FastAPI `BackgroundTask`. The route pre-flights with a lightweight DB check (`get_active_graph`) and calls `reserve_graph` to allocate/reset the `graphs` row before dispatching. PAT is passed per-request via the `X-GitHub-PAT` header and never stored (`api/routes/repos.py`)
 - `GET /repos` — list the caller's graphs (metadata only, no payload) (`api/routes/graphs.py`)
 - `GET /graph?graph_id=...` — fetch the full graph payload (nodes + edges) by id
 - `DELETE /repos/{graph_id}` — evict graph + tree + history + clone record + on-disk cache directory; sync_runs are intentionally left as orphaned audit rows
@@ -62,10 +62,10 @@ All `/repos`, `/graph` routes require a valid JWT. Users can only access their o
 
 **Role:** Single entry point invoked by C1. Decides FULL vs PATCH and chains the stages.
 
-- `orchestrator/orchestrator.py::sync_repo(repo_url, pat, branch, user_id)` — reads `has_active_graph(repo_url, branch)` and dispatches.
-- `orchestrator/full_build.py::full_build` — clone → C4a → C4ab → C4b (only if refs remain) → C4c → C5a → C5b → `link_tree_to_graph` → `record_sync_run` → `record_graph_version`.
-- `orchestrator/patch_build.py::patch_sync` — `get_active_graph` → `pull_repo` → no-op short-circuit if HEAD didn't move → `_split_diff` → re-parse fresh files via `parse_files` → `mutate_tree` → re-resolve only delta ambiguous refs → `update_tree` (preserves `tree_id`) → C5a → C5b → audit row → snapshot. MCP commit-log enrichment runs in parallel as a best-effort background task.
-- DB helpers live in `orchestrator/utils/db_utils.py`: `has_active_graph`, `get_active_graph` (returns the `(graph_id, tree_id, previous_sha)` tuple), `record_sync_run`.
+- `orchestrator/orchestrator.py::sync_repo(repo_url, pat, branch, user_id)` — validates `user_id` (raises `ValueError` if absent), reads `has_active_graph(repo_url, branch, user_id)` and dispatches. `user_id` is required; unauthenticated sync is not supported.
+- `orchestrator/full_build.py::full_build` — `reserve_graph` (idempotent — route may have already called it) → clone → C4a → C4ab → C4b (only if refs remain) → C4c → C5a → C5b (single final write) → `link_tree_to_graph` → `record_sync_run` → `record_graph_version`.
+- `orchestrator/patch_build.py::patch_sync` — `get_active_graph(repo_url, branch, user_id)` → `pull_repo` → no-op short-circuit if HEAD didn't move → `_split_diff` → re-parse fresh files via `parse_files` → `mutate_tree` → re-resolve only delta ambiguous refs → `update_tree` (preserves `tree_id`) → C5a → C5b (single final write) → audit row → snapshot. MCP commit-log enrichment runs in parallel as a best-effort background task.
+- DB helpers live in `orchestrator/utils/db_utils.py`: `has_active_graph(repo_url, branch, user_id)`, `get_active_graph(repo_url, branch, user_id)` (returns the `(graph_id, tree_id, previous_sha)` tuple — both now scoped to `user_id`), `record_sync_run`.
 - `orchestrator/qna_chat.py::run_playground_session` — service handler for the C6 QnA WebSocket. Decodes the JWT, loads the graph + clone path, manages the `QnaSession` lifecycle, and drives the streaming protocol. The FastAPI route is a thin shell that delegates here.
 
 C3, C4, C5 own only primitives — every routing decision lives here.
@@ -123,7 +123,7 @@ Typical mixed-repo split: ~88% dropped (external/stdlib, no project match), ~10%
 
 `graph_engine/networkX_graph_builder/builder.py::build_graph(tree_id) -> GraphBuildResult`. Loads the parse tree (scoped on `status = READY` at the SQL layer), produces a `networkx.MultiDiGraph` (directed, multi-edge), and synthesises `type = "external"` nodes for edge endpoints not present in the tree (cross-repo imports, module globals tree-sitter doesn't extract).
 
-The orchestrator persists the build result via `graph_engine/utils/db_utils.py::persist_graph` — UPSERT into `graphs` keyed on `(user_id, repo_url, branch)`, with `graph_data = {nodes, edges}`, `status = 'BUILDING'`. The `graph_id` is returned to the client immediately, even before C5b runs.
+C5a returns a `GraphBuildResult` (in-memory `MultiDiGraph` + counts) to the orchestrator — it does **not** write to the DB directly. The `graph_id` was pre-allocated by `reserve_graph` before the pipeline started; C5a's result is passed straight through to C5b, which performs the single final write.
 
 **Edge types:** `IMPORTS`, `CALLS`, `CONTAINS`, `INHERITS`, `DECORATES`, `RELATES_TO`, `DEPENDS_ON`. **Confidence:** `EXTRACTED` (tree-sitter / reducer) or `INFERRED` (agent). Unknown edge types are dropped and counted in `edges_dropped`.
 
@@ -145,7 +145,7 @@ The orchestrator persists the build result via `graph_engine/utils/db_utils.py::
 
 #### C5b — Leiden Clustering
 
-`graph_engine/leiden_clustering/clusterer.py::cluster_graph(graph_id) -> ClusterResult`. Loads the C5a graph, projects the `MultiDiGraph` to an undirected weighted simple graph (parallel + reverse edges summed), runs Leiden, writes `community` / `is_god` / `is_orphan` onto each node, and UPDATEs the same `graphs` row in place — flipping `status` to `READY` and setting `community_count`.
+`graph_engine/leiden_clustering/clusterer.py::cluster_graph(graph_id, *, graph, node_count, edge_count, last_commit_sha, repo_clone_id) -> ClusterResult`. When called from the orchestrator, the in-memory `MultiDiGraph` from C5a is passed directly as `graph` — no DB reload needed. Projects to an undirected weighted simple graph (parallel + reverse edges summed), runs Leiden, writes `community` / `is_god` / `is_orphan` onto each node, and issues a single Core `UPDATE` on the pre-reserved `graphs` row — writing `graph_data`, `node_count`, `edge_count`, `last_commit_sha`, `repo_clone_id`, `community_count`, and flipping `status` to `READY` in one shot. The `graph` parameter defaults to `None` for the backward-compatible path (load from DB).
 
 `is_god` flags hubs whose neighbours span 2+ other communities (registries / dispatchers / utilities); `is_orphan` flags isolates (dead-code candidates). Lazy-imports `graspologic` so FastAPI cold start stays under a second.
 
@@ -201,26 +201,30 @@ State stores: `authStore.ts` (JWT), `store.ts` (graph data), `playgroundStore.ts
 
 C1 validates and delegates to C2. C2 is the only component that decides what runs, in what order, against which primitives. C3, C4, C5 are leaves.
 
-**FULL build (no active graph for `(repo_url, branch)`):**
+**FULL build (no active graph for `(repo_url, branch, user_id)`):**
 ```
-Client → C1 → C2 (has_active_graph → False)
+Client → C1 (reserve_graph → graph_id, 202 returned to client)
+       → BackgroundTask → C2 (has_active_graph → False)
+    ├─→ reserve_graph (idempotent — confirms graph_id, status=BUILDING)
     ├─→ C3a clone_repo + persist_clone
     ├─→ C4a parse_codebase  ─┐
     ├─→ C4ab reduce_workload  │ _parse_and_resolve
     ├─→ C4b resolve_ambiguous ┘   (only if refs remain)
     ├─→ C4c index_tree → tree_id
-    ├─→ C5a build_graph + persist_graph (status=BUILDING) → graph_id
-    ├─→ C5b cluster_graph (status flips to READY)
+    ├─→ C5a build_graph → GraphBuildResult (in-memory only)
+    ├─→ C5b cluster_graph (single write: graph_data + counts + status=READY)
     ├─→ link_tree_to_graph
     ├─→ record_sync_run (mode=FULL, status=SUCCESS)
     └─→ record_graph_version (immutable history snapshot)
+    [on failure → mark_graph_error (status=ERROR)]
 ```
 
-**PATCH update (active graph exists):**
+**PATCH update (active graph exists for `(repo_url, branch, user_id)`):**
 ```
-Client → C1 → C2 (has_active_graph → True)
-    ├─→ get_active_graph → (graph_id, tree_id, previous_sha)
-    ├─→ C3a pull_repo (re-clones if cache evicted)  + persist_clone
+Client → C1 (get_active_graph → graph_id already known, 202 returned)
+       → BackgroundTask → C2 (has_active_graph → True)
+    ├─→ get_active_graph(user_id) → (graph_id, tree_id, previous_sha)
+    ├─→ C3a pull_repo (re-clones if cache evicted) + persist_clone
     │   └─ no-op short-circuit if HEAD == previous_sha
     ├─→ C3b commits_between (parallel, best-effort log)
     ├─→ load_tree_as_parse_result(tree_id)
@@ -228,17 +232,18 @@ Client → C1 → C2 (has_active_graph → True)
     ├─→ mutate_tree(existing, stale_paths, delta)
     ├─→ C4ab + C4b on delta.ambiguous only (carry-over refs untouched)
     ├─→ update_tree (preserves tree_id)
-    ├─→ C5a build_graph + persist_graph
-    ├─→ C5b cluster_graph
+    ├─→ C5a build_graph → GraphBuildResult (in-memory only)
+    ├─→ C5b cluster_graph (single write: graph_data + counts + status=READY)
     ├─→ record_sync_run (mode=PATCH)
     └─→ record_graph_version
+    [on failure → mark_graph_error (status=ERROR)]
 ```
 
 ## Database Schema
 
 **`users`** — `user_id` (UUID, PK), `email` (UNIQUE), `display_name`, `github_username`, `password` (bcrypt hash, never plaintext), `role` (`'admin'` | `'member'`), timestamps.
 
-**`graphs`** — `graph_id` (UUID, PK), `user_id` FK, `repo_clone_id` FK (ON DELETE SET NULL), `repo_url`, `branch`, `last_commit_sha`, `graph_data` (JSON: `{nodes, edges}`), `status` (`BUILDING` | `READY` | `ERROR`), `node_count`, `edge_count`, `community_count`, `error_message`, timestamps. UNIQUE `(user_id, repo_url, branch)` — that's `persist_graph`'s upsert conflict target.
+**`graphs`** — `graph_id` (UUID, PK), `user_id` FK, `repo_clone_id` FK (ON DELETE SET NULL), `repo_url`, `branch`, `last_commit_sha`, `graph_data` (JSON: `{nodes, edges}`), `status` (`BUILDING` | `READY` | `ERROR`), `node_count`, `edge_count`, `community_count`, `error_message`, timestamps. UNIQUE `(user_id, repo_url, branch)` — that's `reserve_graph`'s upsert conflict target.
 
 **`trees`** — `tree_id` (UUID, PK), `graph_id` FK UNIQUE (ON DELETE CASCADE), `tree_data` (JSON: `{repo, root, files_parsed, files_skipped, languages, errors, nodes, edges, ambiguous}`), `last_commit_sha`, `status`, `node_count`, `edge_count`, `ambiguous_count`, timestamps. `graph_id` is currently nullable (the FULL pipeline links it after C5b succeeds via `link_tree_to_graph`).
 
@@ -249,9 +254,9 @@ Client → C1 → C2 (has_active_graph → True)
 **`graph_history`** — `history_id` (UUID, PK), `graph_id` FK (ON DELETE CASCADE), `version` (monotonic per `graph_id`), `run_id` FK (ON DELETE SET NULL), `graph_data` snapshot, `last_commit_sha`, count denormalisations, `created_at`. UNIQUE `(graph_id, version)`. Written by `record_graph_version` only on successful builds where `graph_data` actually changed — it's an immutable audit log of "what the graph looked like at this build", separate from the live `graphs` row.
 
 **Lifecycle rules:**
-- `graphs.status`: `BUILDING` (set by `persist_graph`) → `READY` (set by `cluster_graph`), or `BUILDING` → `ERROR`. `graph_data` is non-null as soon as C5a finishes; the row is mutated (not replaced) once C5b runs.
+- `graphs.status`: `BUILDING` (set by `reserve_graph` — before the pipeline starts) → `READY` (set by `cluster_graph` in a single final write), or `BUILDING` → `ERROR` (set by `mark_graph_error` on background task failure). `graph_data` is null until C5b completes; the row is never written in an intermediate state between those two transitions.
 - `trees.status`: `BUILDING` during C4a/C4b → `READY` after C4c commits. PATCH mutates the existing row in place.
-- Graphs persist until an explicit `DELETE /repos/{graph_id}`. `node_count` / `edge_count` reflect the unclustered graph at upsert; `community_count` is set by C5b (0 while `BUILDING`).
+- Graphs persist until an explicit `DELETE /repos/{graph_id}`. `node_count`, `edge_count`, `last_commit_sha`, `repo_clone_id`, and `community_count` are all written by `cluster_graph` in the same UPDATE that sets `status=READY` (0 while `BUILDING`).
 - `DELETE /repos/{graph_id}` cascades the tree, history, and clone record (and rmtrees the cache directory) but intentionally leaves `sync_runs` rows orphaned as a historical audit trail.
 
 ## Storage Model
@@ -268,7 +273,11 @@ JWT-based. `POST /auth/register` → bcrypt the password → store in `users.pas
 
 `api/deps.py::get_current_user_id` is the only thing that mints a `user_id` for downstream routes; every DB query in `graphs.py`, `repos.py`, and the orchestrator flows through it.
 
-There is currently a `_SYSTEM_USER_ID = "system"` placeholder in `graph_engine/utils/db_utils.py` used as a fallback owner when `user_id` is not passed. `trees.graph_id` and `repo_clones.user_id` remain nullable in the schema.
+`api/deps.py::get_current_user_id` is the only thing that mints a `user_id` for downstream routes; every DB query in `graphs.py`, `repos.py`, and the orchestrator flows through it. `sync_repo` enforces this with an explicit `ValueError` guard — unauthenticated sync is not supported.
+
+New DB utilities in `graph_engine/utils/db_utils.py`:
+- `reserve_graph(repo_url, branch, user_id) -> graph_id` — pre-allocates a `BUILDING` row before the pipeline starts (UPSERT on `(user_id, repo_url, branch)`); idempotent if called again by the orchestrator.
+- `mark_graph_error(repo_url, branch, user_id, error_message)` — flips a `BUILDING` row to `ERROR`; no-ops if the row is already `READY` (concurrent re-sync won the race).
 
 ## Key Design Decisions
 
@@ -277,7 +286,7 @@ There is currently a `_SYSTEM_USER_ID = "system"` placeholder in `graph_engine/u
 3. **Three-pass parsing, not two** — Pass 1.5 (workload reducer) drops ~88% of ambiguous refs without an LLM call. Only what survives the symbol-index reducer hits C4b. Original CLAUDE.md described this as two-pass; the reducer was added because Pass 2 alone was burning tokens on cross-file refs that had a single deterministic match.
 4. **Hybrid ingestion** — `git clone` / `git pull` for bulk transfer (no API rate limit), GitHub MCP only for metadata enrichment (PRs, commits between SHAs).
 5. **Differential updates from day one** — PATCH re-parses only changed files via `parse_files`, mutates the stored `trees` row in place (preserves `tree_id`), and re-resolves only the delta's ambiguous refs.
-6. **Single dispatch endpoint** — `POST /repos/sync` covers both initial build and re-sync; the orchestrator picks FULL vs PATCH from `has_active_graph`. Clients don't need to pre-check.
+6. **Single dispatch endpoint, non-blocking** — `POST /repos/sync` returns 202 immediately with a `graph_id`; the FULL/PATCH pipeline runs as a background task. The route reserves the `graphs` row upfront so clients can start polling `GET /graph?graph_id=…` before parsing even begins. Clients don't need to pre-check FULL vs PATCH — the orchestrator decides internally.
 7. **PAT per-request** — passed via `X-GitHub-PAT` header on each `/repos/sync` call. Never persisted, never logged.
 8. **`graph_history` for immutable snapshots** — the live `graphs` row is mutated in place across syncs; `graph_history` keeps an append-only record of what the graph looked like at every successful build, linked to the `sync_runs` row that produced it.
 9. **Graphs persist until explicit delete** — no TTL, no auto-eviction. `DELETE /repos/{graph_id}` is the only path.

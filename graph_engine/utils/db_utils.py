@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import networkx as nx
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update as sa_update
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from db.database import get_session
@@ -159,6 +159,92 @@ def persist_graph(
     return graph_id
 
 
+def reserve_graph(repo_url: str, branch: str, user_id: str) -> str:
+    """Pre-allocate a graphs row (status=BUILDING, graph_data=None).
+
+    Called by the sync route before dispatching the heavy pipeline as a
+    background task. The route returns this graph_id in the 202 response so
+    clients can start polling immediately.
+
+    Uses the same upsert key as persist_graph — if a READY row already exists
+    for (user_id, repo_url, branch) it resets to BUILDING, preserving the
+    graph_id clients already know about.
+    """
+    new_graph_id = str(uuid.uuid4())
+    stmt = sqlite_insert(Graph).values(
+        graph_id=new_graph_id,
+        user_id=user_id,
+        repo_url=repo_url,
+        branch=branch,
+        status=GraphStatus.BUILDING.value,
+        node_count=0,
+        edge_count=0,
+        community_count=0,
+    )
+    upsert = stmt.on_conflict_do_update(
+        index_elements=["user_id", "repo_url", "branch"],
+        set_={
+            "status": GraphStatus.BUILDING.value,
+            "graph_data": None,
+            "error_message": None,
+            "node_count": 0,
+            "edge_count": 0,
+            "community_count": 0,
+            "updated_at": func.current_timestamp(),
+        },
+    ).returning(Graph.graph_id)
+
+    with get_session() as session:
+        graph_id = session.execute(upsert).scalar_one()
+        session.commit()
+
+    logger.info(
+        "db_utils: reserved graph %s (user=%s repo=%s status=BUILDING)",
+        graph_id,
+        user_id,
+        repo_url,
+    )
+    return graph_id
+
+
+def mark_graph_error(
+    repo_url: str,
+    branch: str,
+    user_id: str,
+    error_message: str,
+) -> None:
+    """Flip a BUILDING graphs row to ERROR after a background task failure.
+
+    Scoped to (user_id, repo_url, branch) and only updates rows still in
+    BUILDING state — no-ops if the row is already READY (concurrent re-sync
+    succeeded) or missing.
+    """
+    stmt = (
+        sa_update(Graph)
+        .where(
+            Graph.user_id == user_id,
+            Graph.repo_url == repo_url,
+            Graph.branch == branch,
+            Graph.status == GraphStatus.BUILDING.value,
+        )
+        .values(
+            status=GraphStatus.ERROR.value,
+            error_message=error_message,
+            updated_at=func.current_timestamp(),
+        )
+    )
+    with get_session() as session:
+        session.execute(stmt)
+        session.commit()
+
+    logger.warning(
+        "db_utils: graph marked ERROR (user=%s repo=%s message=%.120s)",
+        user_id,
+        repo_url,
+        error_message,
+    )
+
+
 def load_graph(graph_id: str) -> LoadedGraph:
     """Fetch a `graphs` row and rehydrate its `MultiDiGraph` payload.
 
@@ -256,12 +342,21 @@ def update_graph_with_clusters(
     *,
     graph: nx.MultiDiGraph,
     community_count: int,
+    node_count: int | None = None,
+    edge_count: int | None = None,
+    last_commit_sha: str | None = None,
+    repo_clone_id: str | None = None,
 ) -> None:
     """UPDATE the `graphs` row in place after C5b finishes.
 
-    Mutates `graph_data` (nodes now carry `community` plus god/orphan flags),
-    sets `community_count`, and flips `status` → `ready`. `node_count` /
-    `edge_count` are untouched: Leiden enriches topology, never changes it.
+    Writes the enriched `graph_data` (nodes carry `community`, `is_god`,
+    `is_orphan`), sets `community_count`, and flips `status` → `READY`.
+    When called directly from the orchestrator (H4 path — no intermediate
+    persist_graph round-trip), also writes `node_count`, `edge_count`,
+    `last_commit_sha`, and `repo_clone_id`.
+
+    Uses a Core UPDATE to avoid the SELECT-then-overwrite ORM pattern that
+    would read the (potentially large) `graph_data` blob only to discard it.
     """
     payload: dict[str, Any] = {
         "nodes": [
@@ -273,21 +368,35 @@ def update_graph_with_clusters(
         ],
     }
 
+    values: dict[str, Any] = {
+        "graph_data": payload,
+        "community_count": community_count,
+        "status": GraphStatus.READY.value,
+        "updated_at": func.current_timestamp(),
+    }
+    if node_count is not None:
+        values["node_count"] = node_count
+    if edge_count is not None:
+        values["edge_count"] = edge_count
+    if last_commit_sha is not None:
+        values["last_commit_sha"] = last_commit_sha
+    if repo_clone_id is not None:
+        values["repo_clone_id"] = repo_clone_id
+
     with get_session() as session:
-        row = session.execute(
-            select(Graph).where(Graph.graph_id == graph_id)
-        ).scalar_one_or_none()
-        if row is None:
+        result = session.execute(
+            sa_update(Graph).where(Graph.graph_id == graph_id).values(**values)
+        )
+        if result.rowcount == 0:
             raise ValueError(f"graph not found: graph_id={graph_id}")
-        row.graph_data = payload
-        row.community_count = community_count
-        row.status = GraphStatus.READY.value
         session.commit()
 
     logger.info(
-        "db_utils: graph %s clustered → status=ready communities=%d",
+        "db_utils: graph %s clustered → status=READY communities=%d nodes=%s edges=%s",
         graph_id,
         community_count,
+        node_count,
+        edge_count,
     )
 
 

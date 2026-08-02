@@ -32,7 +32,7 @@ from fastapi.concurrency import run_in_threadpool
 from db.entities import SyncMode, SyncRunStatus
 from graph_engine.leiden_clustering import cluster_graph
 from graph_engine.networkX_graph_builder import build_graph
-from graph_engine.utils.db_utils import persist_graph, record_graph_version
+from graph_engine.utils.db_utils import record_graph_version
 from hybrid_parsing.codebase_parser import parse_files
 from hybrid_parsing.codebase_parser.models import ParseResult
 from hybrid_parsing.surgical_agent import resolve_ambiguous
@@ -60,7 +60,9 @@ async def patch_sync(
     """Run a PATCH sync for `(repo_url, branch)`. Returns the graph_id touched."""
     started_at = datetime.now(timezone.utc)
 
-    active = await asyncio.to_thread(get_active_graph, repo_url, branch)
+    if not user_id:
+        raise RuntimeError("patch_sync called without user_id — orchestrator guard should have caught this")
+    active = await asyncio.to_thread(get_active_graph, repo_url, branch, user_id)
     if active is None:
         # The dispatcher already saw `has_active_graph == True`; if we get
         # here the row was deleted between the two calls. Surface as a soft
@@ -218,16 +220,16 @@ async def _refresh_graph(
         update_tree, active.tree_id, merged, last_commit_sha=pull.current_sha
     )
     graph_result = await asyncio.to_thread(build_graph, active.tree_id)
-    graph_id = await asyncio.to_thread(
-        persist_graph,
-        graph_result.graph,
-        repo_url=repo_url,
-        branch=branch,
-        repo_clone_id=pull.repo_id,
+    graph_id = active.graph_id
+    await asyncio.to_thread(
+        cluster_graph,
+        graph_id,
+        graph=graph_result.graph,
+        node_count=graph_result.node_count,
+        edge_count=graph_result.edge_count,
         last_commit_sha=pull.current_sha,
-        user_id=user_id,
+        repo_clone_id=pull.repo_id,
     )
-    await asyncio.to_thread(cluster_graph, graph_id)
 
     run_id = await asyncio.to_thread(
         record_sync_run,

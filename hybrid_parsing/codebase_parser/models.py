@@ -28,6 +28,7 @@ class Node:
     language: str
     params: list[str] = field(default_factory=list)
     docstring: str | None = None
+    return_type: str | None = None
 
 
 @dataclass
